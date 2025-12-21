@@ -1,0 +1,155 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('server:server');
+var http = require('http');
+const https = require('https');
+const fs = require('fs');
+
+
+// Read .env file
+
+require('dotenv').config();
+
+const mongoose = require('mongoose');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '5001');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+const key = fs.readFileSync("../cert/key.pem")
+const cert = fs.readFileSync("../cert/cert.pem")
+const secServer = https.createServer({key, cert}, app);
+
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+    var port = parseInt(val, 10);
+
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
+
+    if (port >= 0) {
+        // port number
+        return port;
+    }
+
+    return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+
+    var bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
+
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+    var addr = server.address();
+    var bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
+}
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+function startServer() {
+    server.listen(port, "0.0.0.0");
+    server.on('error', onError);
+    server.on('listening', onListening);
+}
+
+function onSecListening() {
+    var addr = secServer.address();
+    var bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
+}
+
+function startSecServer(){
+    secServer.listen(port);
+    secServer.on('error', onError);
+    secServer.on('listening', onSecListening);
+}
+
+function connectToDB() {
+    mongoose.connect(process.env.MONGO_URI)
+        .then(() => {
+            console.log('Connected to DB', process.env.MONGO_URI);
+            console.log('Server Running On Port', process.env.PORT);
+            startServer();
+        })
+        .catch((error) => {
+            console.error("Error Connecting to DB", error);
+            setTimeout(() => {
+                console.log('Retrying...\n', error);
+                connectToDB();
+            }, 5000);
+        })
+}
+
+function connectToDBSec() {
+    mongoose.connect(process.env.MONGO_URI)
+        .then(() => {
+            console.log('Connected to DB', process.env.MONGO_URI);
+            console.log('Server Running On Port', process.env.PORT);
+            startSecServer();
+        })
+        .catch((error) => {
+            console.error("Error Connecting to DB", error);
+            setTimeout(() => {
+                console.log('Retrying...\n', error);
+                connectToDB();
+            }, 5000);
+        })
+}
+
+connectToDB();
+// connectToDBSec();

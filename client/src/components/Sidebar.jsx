@@ -29,7 +29,8 @@ import {
     PieChartOutlined,
     TrendingUpOutlined,
     Inventory, Groups,
-    Store
+    Store,
+    Assignment
 } from "@mui/icons-material";
 import PersonIcon from '@mui/icons-material/Person';
 import {useEffect, useState} from "react";
@@ -99,6 +100,14 @@ const navItems = [
     {
         text: "Dashboard",
         icon: <Home/>,
+    },
+    {
+        text: "Services",
+        icon: null
+    },
+    {
+        text: "Orders",
+        icon: <Assignment/>
     },
     {
         text: "Human Resources",

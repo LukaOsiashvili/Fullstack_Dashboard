@@ -17,7 +17,12 @@ import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import Header from '../../components/Header'
 import FlexBetween from "../../components/FlexBetween";
-import {useAddBranchMutation, useGetBranchCitiesQuery, useLazyGetBranchesByCityQuery} from "../../state/apis/api";
+import {
+    useAddBranchMutation,
+    useGetBranchCitiesQuery,
+    useGetBranchPhotoQuery,
+    useLazyGetBranchesByCityQuery
+} from "../../state/apis/api";
 import BranchFormPopup from "../../forms/BranchFormPopup";
 import toast from "react-hot-toast";
 
@@ -32,6 +37,9 @@ const initialValues = {
 const Branch = ({_id, name, city, address}) => {
     const theme = useTheme();
     const navigate = useNavigate();
+
+    const apiUrl = process.env.REACT_APP_BASE_URL;
+    const {data: photo, isLoading: isPhotoLoading} = useGetBranchPhotoQuery(_id);
 
     return (
         <Card
@@ -52,6 +60,7 @@ const Branch = ({_id, name, city, address}) => {
                 }}
             >
                 <Avatar
+                    src={apiUrl+photo?.photoPath || undefined}
                     sx={{
                         bgcolor: theme.palette.secondary.main,
                         width: "100%",

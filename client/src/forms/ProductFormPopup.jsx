@@ -1,6 +1,6 @@
 import React, {useState} from 'react'
 import {Form, Formik} from 'formik';
-import {Box, Button, CircularProgress, MenuItem, TextField, Typography, ThemeProvider, useTheme} from '@mui/material';
+import {Box, Button, CircularProgress, MenuItem, TextField, Typography, useTheme} from '@mui/material';
 import Popup from "../components/Popup"
 import ImageUploadBox from "../components/ImageUploadBox";
 
@@ -36,8 +36,7 @@ const ProductFormPopup = ({open, onClose, mode, categories, initialValues, onSub
                     <Form onSubmit={handleSubmit}>
 
                         <Box display="grid"
-                             gridTemplateColumns={mode==="edit" ? "minmax(250px, 1fr) minmax(250px, 1fr) minmax(250px, 1fr)" : "minmax(250px, 1fr) minmax(250px, 1fr)"}
-                             // gridTemplateColumns="minmax(250px, 1fr) minmax(250px, 1fr) minmax(250px, 1fr)"
+                             gridTemplateColumns={mode === "edit" ? "minmax(250px, 1fr) minmax(250px, 1fr) minmax(250px, 1fr)" : "minmax(250px, 1fr) minmax(250px, 1fr)"}
                              gap="1rem">
 
                             {mode === "edit" && (
@@ -174,8 +173,13 @@ const ProductFormPopup = ({open, onClose, mode, categories, initialValues, onSub
                                 <Button type={"submit"} sx={{backgroundColor: theme.palette.secondary.light}}>
                                     {isSubmitting
                                         ? <CircularProgress size={24} sx={{color: "white"}}/>
-                                        : <Typography variant="h6"
-                                                      color={theme.palette.background.alt}>Submit</Typography>
+                                        : <Typography
+                                            variant="h6"
+                                            color={theme.palette.background.alt}
+                                            sx={{fontWeight: 600}}
+                                        >
+                                            Submit
+                                        </Typography>
                                     }
                                 </Button>
                                 <Button type={"reset"}>

@@ -233,6 +233,28 @@ export const themeSettings = (mode) => {
                     },
                 },
             },
+            MuiAutocomplete: {
+                styleOverrides: {
+                    paper: {
+                        backgroundColor: isDark
+                            ? tokensDark.primary[400]
+                            : tokensLight.primary[400],
+                        color: isDark
+                            ? tokensDark.grey[100]
+                            : tokensLight.grey[100],
+                    },
+
+                    groupLabel: {
+                        backgroundColor: isDark
+                            ? tokensDark.primary[700]
+                            : tokensLight.primary[700],
+                        color: isDark
+                            ? tokensDark.grey[100]
+                            : tokensLight.grey[100],
+                    },
+                },
+            },
+
         },
 
 

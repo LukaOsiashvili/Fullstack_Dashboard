@@ -263,6 +263,34 @@ export const api = createApi({
             invalidatesTags: (result, error, arg) =>
                 [{type: "Inventory", id: arg.productId}]
         }),
+        uploadBranchPhoto: build.mutation({
+            query: ({file, branchId}) => {
+                const formData = new FormData();
+                formData.append("branchPhoto", file);
+                formData.append("branchId", branchId);
+
+                return {
+                    url: "branches/uploadBranchPhoto",
+                    method: "PUT",
+                    body: formData,
+                };
+            },
+            // invalidatesTags: ["UserAvatar"],
+        }),
+        getBranchPhoto: build.query({
+            query: (branchId) => ({
+                url: `/branches/getBranchPhoto/${branchId}`,
+                method: "GET",
+            })
+        }),
+        updateBranch: build.mutation({
+            query: ({branchId, data}) => ({
+                url: `/branches/updateBranch/${branchId}`,
+                method: "PUT",
+                body: data
+            }),
+            invalidatesTags: ["Branch"]
+        }),
     })
 })
 
@@ -296,4 +324,7 @@ export const {
     useGetProductInventoryAtBranchMutation,
     useAddBranchMutation,
     useUpdateProductInventoryAtBranchMutation,
+    useUploadBranchPhotoMutation,
+    useGetBranchPhotoQuery,
+    useUpdateBranchMutation,
 } = api

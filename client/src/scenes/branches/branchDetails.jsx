@@ -16,12 +16,15 @@ import {
 import {KeyboardArrowDown, KeyboardArrowUp, Edit, Save} from "@mui/icons-material";
 import {useParams} from "react-router-dom";
 import {
-    useGetBranchByIdQuery,
-    useGetProductInventoryAtBranchMutation,
-    useUpdateInventoryByVariantMutation, useUpdateProductInventoryAtBranchMutation
+    useGetBranchByIdQuery, useGetBranchCitiesQuery, useGetBranchPhotoQuery,
+    useGetProductInventoryAtBranchMutation, useUpdateBranchMutation,
+    useUpdateInventoryByVariantMutation, useUpdateProductInventoryAtBranchMutation, useUploadBranchPhotoMutation
 } from "../../state/apis/api";
 import FlexBetween from "../../components/FlexBetween";
 import Header from "../../components/Header";
+import EditIcon from "@mui/icons-material/Edit";
+import BranchFormPopup from "../../forms/BranchFormPopup";
+import toast from "react-hot-toast";
 
 function TabPanel({children, value, index}) {
     return (
@@ -319,7 +322,7 @@ const ProductInventoryTable = ({branchData, categories}) => {
                     indicatorColor={theme.palette.secondary.main}
                     centered
                     aria-label="basic tabs example"
-                    sx={{ width: isNonMobile ? '82%' : "110%"}}
+                    sx={{width: isNonMobile ? '82%' : "110%"}}
                 >
                     {categories.map((category, index) => (
                         <Tab
@@ -381,10 +384,20 @@ const ProductInventoryTable = ({branchData, categories}) => {
 
 const BranchDetails = () => {
     const theme = useTheme();
+
+    const apiUrl = process.env.REACT_APP_BASE_URL;
+
     const {id} = useParams();
     const isNonMobile = useMediaQuery("(min-width: 100px)");
 
+    const [isUpdatingBranch, setIsUpdatingBranch] = useState();
+
     const {data: branchData, isLoading} = useGetBranchByIdQuery(id);
+    const {data: cities, isLoading: isCitiesLoading} = useGetBranchCitiesQuery();
+    const {data: photo, isLoading: isPhotoLoading} = useGetBranchPhotoQuery(id);
+
+    const [updateBranch] = useUpdateBranchMutation();
+    const [uploadBranchPhoto] = useUploadBranchPhotoMutation();
 
     const categories = useMemo(() => {
         if (!branchData?.products) return [];
@@ -394,6 +407,32 @@ const BranchDetails = () => {
     console.log(categories);
 
     console.log(branchData)
+
+    const handleUpdateBranchFormSubmit = async (values, { setSubmitting, resetForm }) => {
+        try{
+            await updateBranch({branchId: id, data: values}).unwrap();
+            toast.success("Branch Updated Successfully!");
+            resetForm();
+            setIsUpdatingBranch(false)
+        } catch (error) {
+            console.log(error);
+            toast.error("Branch Update Failed!");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    const handleImgSubmit = async (imageFile) => {
+        if (!imageFile) return;
+
+        try{
+            await uploadBranchPhoto({file: imageFile, branchId: id}).unwrap();
+            toast.success("Branch Photo Uploaded Successfully.");
+        } catch (error) {
+            console.log(error);
+            toast.error("Branch Photo Upload Failed");
+        }
+    }
 
     const labelValue = (label, value) => (
         <Box sx={{mb: 1}}>
@@ -414,22 +453,46 @@ const BranchDetails = () => {
             <Header title={"Branch Details"} subtitle={"See Branch Details"}/>
             <Box padding={"2rem"} display="flex" justifyContent="space-between" alignItems="center" mt={"1.5rem"}
                  sx={{border: `1px solid ${theme.palette.secondary[300]}`, borderRadius: "10px"}}>
-                <Box component="img" sx={{
-                    width: "50vh",
-                    height: "50vh",
-                    borderRadius: 3,
-                    objectFit: "cover",
-                    boxShadow: 3,
-                }}/>
+                <Box
+                    component="img"
+                    src={apiUrl + photo?.photoPath || undefined}
+                    alt={"product photo"}
+                    sx={{
+                        width: "50vh",
+                        height: "50vh",
+                        borderRadius: 3,
+                        objectFit: "cover",
+                        boxShadow: 3,
+                    }}/>
                 <Box width={"60%"}>
-                    <Typography variant="h1" sx={{fontWeight: 700, mb: 3}}>
-                        {isLoading ? "Loading..." : branchData.branch.name}
-                    </Typography>
+                    <FlexBetween sx={{ mb: 4}}>
+                        <Typography variant="h1" sx={{fontWeight: 700}}>
+                            {isLoading ? "Loading..." : branchData.branch.name}
+                        </Typography>
+                        <Button
+                            onClick={() => {
+                                setIsUpdatingBranch(!isUpdatingBranch)
+                            }}
+                            sx={{
+                                backgroundColor: theme.palette.secondary.light,
+                                color: theme.palette.background.alt,
+                                fontWeight: "bold",
+                                fontSize: "14px",
+                                padding: "10px 20px",
+                            }}
+                            type="button"
+                        >
+                            <>
+                                <EditIcon/>
+                                Update Information
+                            </>
+                        </Button>
+                    </FlexBetween>
 
                     {labelValue("City", isLoading ? "Loading..." : branchData.branch.location.city || "-")}
                     {labelValue("Address", isLoading ? "Loading..." : branchData.branch.location.address || "-")}
                     {labelValue("Manager", isLoading ? "Loading..." : branchData.branch.manager || "-")}
-                    {labelValue("Status", "False")}
+                    {labelValue("Status", "Active")}
 
                 </Box>
             </Box>
@@ -437,6 +500,15 @@ const BranchDetails = () => {
                 Product Inventory
             </Typography>
             {!isLoading && branchData && <ProductInventoryTable branchData={branchData} categories={categories}/>}
+            <BranchFormPopup
+                open={isUpdatingBranch}
+                onClose={() => setIsUpdatingBranch(false)}
+                mode={"edit"}
+                cities={!isCitiesLoading ? cities : null}
+                initialValues={!isLoading ? branchData.branch : null}
+                onSubmit={handleUpdateBranchFormSubmit}
+                onImgSubmit={handleImgSubmit}
+            />
         </Box>
     )
 }

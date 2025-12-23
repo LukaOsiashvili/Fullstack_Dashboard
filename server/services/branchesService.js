@@ -1,6 +1,8 @@
 const BranchesModel = require("../models/branches");
 const InventoryModel = require("../models/inventory");
 const mongoose = require("mongoose");
+const fs = require("fs");
+const path = require("path");
 
 module.exports = {
     getBranchCities: async (req, res) => {
@@ -194,6 +196,55 @@ module.exports = {
             res.status(500).json(error);
         }
     },
+
+    uploadBranchPhoto: async (req, res) => {
+        try{
+            if(!req.file){
+                return res.status(400).json({message: "File Not Found"});
+            }
+
+            const imagePath = `/uploads/branchPhotos/${req.file.filename}`;
+
+            const updateBranch = await BranchesModel.findByIdAndUpdate(
+                req.body.branchId,
+                {photoPath: imagePath},
+                {new: true}
+            );
+
+            if(!updateBranch){
+                throw new Error("Branch Not Found");
+            }
+
+            res.status(200).json({message: "Branch Photo Uploaded Successfully"});
+        } catch(error) {
+            console.log(error);
+            if(req.file && req.file.path && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            res.status(500).json({message: "Branch Photo Upload Failed"});
+        }
+    },
+
+    getBranchPhoto: async (req, res) => {
+        try{
+            const branch = await BranchesModel.findById(req.params.id)
+
+            if(!branch || !branch.photoPath){
+                return res.status(404).json({message: "Branch Not Found"});
+            }
+
+            const filePath = path.join(__dirname, "../..", branch.photoPath);
+            if(!fs.existsSync(filePath)){
+                return res.status(404).json({message: "Product Photo Not Found on Server"});
+            }
+
+            res.status(200).json({photoPath: branch.photoPath});
+        } catch(error) {
+            console.log(error);
+            res.status(500).json(error);
+        }
+    },
+
     updateProductInventoryAtBranch: async (req, res) => {
         const data = req.body;
 
@@ -228,6 +279,31 @@ module.exports = {
         } catch (error){
             console.log(error);
             res.status(500).json({message: "Error in updateProductInventoryAtBranch", error});
+        }
+    },
+
+    updateBranch: async (req, res) => {
+        try{
+            const updatedItem = await BranchesModel.findByIdAndUpdate(req.params.id, {$set: req.body}, {new: true});
+
+            if(!updatedItem){
+                res.status(404).json({message: "Branch Not Found"});
+            }
+
+            return res.status(200).json({message: "Branch Updated Successfully"});
+        } catch(error){
+            console.log(error);
+            res.status(500).json(error);
+        }
+    },
+
+    deleteBranch: async (req, res) => {
+        try{
+            await BranchesModel.findByIdAndDelete({_id: req.params.id});
+            res.status(200).json({message: "Branch Deleted Successfully"});
+        } catch(error) {
+            res.status(500).json(error);
+            console.log(error);
         }
     }
 }

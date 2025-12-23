@@ -8,7 +8,9 @@ const branchSchema = new mongoose.Schema({
         city: {type: String, required: true},
     },
     manager: {type: mongoose.Schema.Types.ObjectId, ref: 'Users',},
+    photoPath: {type: String},
 }, {
+
     collection: "Branches",
     timestamps: true,
     read: "nearest",

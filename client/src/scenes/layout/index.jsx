@@ -15,7 +15,13 @@ const Layout = () => {
         <Box display={isNonMobile ? "flex" : "block"} width={"100%"} height={"100%"}>
             {isLoggedIn && (<Sidebar drawerWidth={"250px"} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}/>)}
 
-            <Box flexGrow={1} overflowY={"auto"}>
+            <Box
+                flexGrow={1}
+                minWidth={0}
+                overflowY="auto"
+                display="flex"
+                flexDirection="column"
+            >
                 <Navbar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} isLogIn={!isLoggedIn} />
                 <Outlet/>
             </Box>

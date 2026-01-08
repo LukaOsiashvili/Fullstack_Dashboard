@@ -30,7 +30,8 @@ import {
     TrendingUpOutlined,
     Inventory, Groups,
     Store,
-    Assignment
+    Assignment,
+    Build
 } from "@mui/icons-material";
 import PersonIcon from '@mui/icons-material/Person';
 import {useEffect, useState} from "react";
@@ -110,16 +111,8 @@ const navItems = [
         icon: <Assignment/>
     },
     {
-        text: "Human Resources",
-        icon: null
-    },
-    {
-        text: "Profile",
-        icon: <PersonIcon />,
-    },
-    {
-        text: "Users",
-        icon: <Groups />,
+        text: "cutOrders",
+        icon: <Build/>
     },
     {
         text: "Management",
@@ -136,7 +129,19 @@ const navItems = [
     {
         text: "Branches",
         icon: <Store/>
-    }
+    },
+    {
+        text: "Human Resources",
+        icon: null
+    },
+    {
+        text: "Profile",
+        icon: <PersonIcon />,
+    },
+    {
+        text: "Users",
+        icon: <Groups />,
+    },
 ]
 
 const Sidebar = ({user, drawerWidth, isSidebarOpen, setIsSidebarOpen, isNonMobile}) => {

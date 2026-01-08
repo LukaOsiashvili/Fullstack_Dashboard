@@ -18,6 +18,7 @@ import Materials from "./scenes/materials";
 import Branches from "./scenes/branches"
 import BranchDetails from "./scenes/branches/branchDetails";
 import OrdersPage from "./scenes/orders";
+import CutOrdersPage from "./scenes/cutOrders/cutOrders2";
 
 function App() {
 
@@ -47,6 +48,7 @@ function App() {
                             <Route path="/branches" element={<Branches />}/>
                             <Route path="/branches/details/:id" element={<BranchDetails />}/>
                             <Route path="/orders" element={<OrdersPage/>}/>
+                            <Route path="/cutOrders" element={<CutOrdersPage />}/>
                         </Route>
                     </Routes>
                 </ThemeProvider>

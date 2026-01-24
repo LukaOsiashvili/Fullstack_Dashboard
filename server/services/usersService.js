@@ -88,6 +88,42 @@ module.exports = {
             })
     },
 
+    getUser: async (req, res) => {
+        try{
+            let userId;
+            jwt.verify(req.headers.authorization, process.env.JWT_SECRET, (err,decoded) => {
+                if (err) {
+                    return res.status(401).send({message: "INVALID SESSION"})
+                }
+                userId = decoded.id;
+            })
+            const item = await UsersModel.findById(userId, {password: 0});
+            res.status(200).json(item);
+        }catch(err){
+            res.status(500).send({message: err.message});
+        }
+
+    },
+
+    getUsersByRoles: async (req, res) => {
+        try{
+            const {roles} = req.query;
+
+             if(!roles){
+                 res.status(400).json({message: "No Roles Provided | Roles Are Necessary!"})
+             }
+
+             const roleList = Array.isArray(roles) ? roles : roles.split(',');
+             const users = await UsersModel.find({
+                 role: {$in: roleList}
+             })
+
+            res.status(200).json(users);
+        } catch (error){
+            res.status(500).json(error);
+        }
+    },
+
     updateUserById: async (req, res) => {
         console.log(req.body)
       try{
@@ -118,24 +154,6 @@ module.exports = {
             res.status(500).send({message: err.message});
             console.log("Could Not Delete User")
         }
-    },
-
-    getUser: async (req, res) => {
-
-        try{
-            let userId;
-            jwt.verify(req.headers.authorization, process.env.JWT_SECRET, (err,decoded) => {
-                if (err) {
-                    return res.status(401).send({message: "INVALID SESSION"})
-                }
-                userId = decoded.id;
-            })
-            const item = await UsersModel.findById(userId, {password: 0});
-            res.status(200).json(item);
-        }catch(err){
-            res.status(500).send({message: err.message});
-        }
-
     },
 
     updateUser: async (req, res) => {

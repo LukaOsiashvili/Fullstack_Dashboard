@@ -17,6 +17,7 @@ router.post("/register", usersService.register);
 router.post("/login", usersService.login);
 router.post("/logout", usersService.logout);
 router.get("/all", APISecurity.requireLogin, usersService.getAll);
+router.get("/getUsersByRole", APISecurity.requireLogin, usersService.getUsersByRoles)
 router.put("/updateUser/:id", APISecurity.requireLogin, usersService.updateUserById);
 router.delete("/deleteUser/:id", APISecurity.requireLogin, usersService.deleteUserById);
 router.get("/getUser", APISecurity.requireLogin, usersService.getUser);

@@ -10,24 +10,29 @@ import {
     InputLabel, MenuItem,
     Paper, Select,
     Stack, TextField,
-    Typography
+
+    Typography, useTheme
 } from "@mui/material";
+
+// Icons
 import TimelineIcon from "@mui/icons-material/Timeline";
-import {getStatusColor, getStatusIcon} from "./getFunctions";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InfoIcon from "@mui/icons-material/Info";
 
-// Status Change Dialog
+import {getStatusColor, getStatusIcon} from "./getFunctions";
 
-const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
-    const [newStatus, setNewStatus] = useState('');
+const StatusChangeDialog = ({open, onClose, order, onStatusChange, users, option}) => {
+
+    const theme = useTheme();
+
+    const [newStatus, setNewStatus] = useState(option);
     const [cancellationReason, setCancellationReason] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
 
     useEffect(() => {
         if (order) {
-            setNewStatus(order.status);
+            setNewStatus(!option ? order.status : option);
             setCancellationReason(order.cancellationReason || '');
             setAssignedTo(order.assignedTo?.userId || '');
         }
@@ -36,6 +41,7 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
     const handleSave = () => {
         const assignedUser = users.find((u) => u._id === assignedTo);
         onStatusChange(order._id, {
+            ...order,
             status: newStatus,
             cancellationReason: newStatus === 'CANCELLED' ? cancellationReason : '',
             completedDate: newStatus === 'COMPLETED' ? new Date() : null,
@@ -71,22 +77,23 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-            <DialogTitle>
+            <DialogTitle sx={{backgroundColor: theme.palette.primary[600]}}>
                 <Stack direction="row" spacing={2} alignItems="center">
-                    <TimelineIcon color="primary"/>
+                    <TimelineIcon color="action"/>
                     <Typography variant="h6">Update Order Status</Typography>
                 </Stack>
             </DialogTitle>
-            <DialogContent>
+            <DialogContent sx={{backgroundColor: theme.palette.primary[600]}} t>
                 <Stack spacing={3} sx={{mt: 2}}>
                     {/* Current Status Display */}
-                    <Paper variant="outlined" sx={{p: 2, bgcolor: 'grey.50'}}>
+                    <Paper variant="outlined" sx={{p: 2, backgroundColor: theme.palette.background.alt}}>
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body1" color={theme.palette.secondary.light}>
                                 Current Status:
                             </Typography>
                             <Chip
-                                label={order.status}
+                                label={<Typography
+                                    textTransform="capitalize">{order.status.replace('_', ' ').toLowerCase()}</Typography>}
                                 color={getStatusColor(order.status)}
                                 icon={getStatusIcon(order.status)}
                             />
@@ -105,14 +112,16 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
                             <MenuItem value={order.status} disabled>
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     {getStatusIcon(order.status)}
-                                    <span>{order.status} (Current)</span>
+                                    <Typography
+                                        textTransform="capitalize">{order.status.replace('_', ' ').toLowerCase()} (Current)</Typography>
                                 </Stack>
                             </MenuItem>
                             {allowedStatuses.map((status) => (
                                 <MenuItem key={status} value={status}>
                                     <Stack direction="row" spacing={1} alignItems="center">
                                         {getStatusIcon(status)}
-                                        <span>{status.replace('_', ' ')}</span>
+                                        <Typography
+                                            textTransform="capitalize">{status.replace('_', ' ').toLowerCase()}</Typography>
                                     </Stack>
                                 </MenuItem>
                             ))}
@@ -133,7 +142,6 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
                                     <em>No Assignment</em>
                                 </MenuItem>
                                 {users
-                                    .filter((u) => u.role === 'Artisan')
                                     .map((user) => (
                                         <MenuItem key={user._id} value={user._id}>
                                             <Stack direction="row" spacing={1} alignItems="center">
@@ -191,7 +199,7 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
                                 )
                             }
                         >
-                            {newStatus === 'CANCELLED' && 'This action cannot be easily undone. The order will be marked as cancelled.'}
+                            {newStatus === 'CANCELLED' && 'The order will be marked as cancelled. This action cannot be easily undone.'}
                             {newStatus === 'COMPLETED' && 'This will mark the order as fulfilled and record the completion time.'}
                             {newStatus === 'IN_PROGRESS' && 'The order will be marked as actively being worked on.'}
                             {newStatus === 'RETURNED' && 'This will process the order as a return.'}
@@ -200,21 +208,34 @@ const StatusChangeDialog = ({open, onClose, order, onStatusChange, users}) => {
                     )}
                 </Stack>
             </DialogContent>
-            <DialogActions sx={{px: 3, py: 2}}>
-                <Button onClick={handleClose} color="inherit">
-                    Cancel
+            <DialogActions sx={{px: 3, py: 2, backgroundColor: theme.palette.primary[600]}}>
+                <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    sx={{borderColor: theme.palette.primary[100]}}>
+                    <Typography
+                        variant="h6"
+                        color={theme.palette.secondary.light}
+                        textTransform="none"
+                    >
+                        Cancel
+                    </Typography>
                 </Button>
                 <Button
                     onClick={handleSave}
                     variant="contained"
                     color={getStatusColor(newStatus) || 'primary'}
                     disabled={
-                        newStatus === order.status ||
+                        (newStatus === order.status && assignedTo === order.assignedTo?.userId) ||
                         (newStatus === 'CANCELLED' && !cancellationReason)
                     }
                     startIcon={getStatusIcon(newStatus)}
                 >
-                    Update Status
+                    <Typography
+                        textTransform="none"
+                    >
+                        Update Status
+                    </Typography>
                 </Button>
             </DialogActions>
         </Dialog>

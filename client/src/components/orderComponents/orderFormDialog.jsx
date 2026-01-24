@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from "react";
 import {
-    Alert,
+    Alert, Autocomplete,
     Box,
     Button, Chip,
     Dialog,
@@ -10,13 +10,13 @@ import {
     IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
     Stack,
     Step,
+
     StepLabel,
     Stepper, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
     Typography, useTheme
 } from "@mui/material";
 import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
 import {DatePicker, DateTimePicker, LocalizationProvider} from "@mui/x-date-pickers";
-
 import ProductSelector from "./productsSelector";
 import {formatCurrency, getOrderTypeColor, getOrderTypeIcon} from "./getFunctions";
 import dayjs from 'dayjs';
@@ -38,17 +38,22 @@ import PersonIcon from "@mui/icons-material/Person";
 import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 
+// RTK Query Endpoints
+import {
+    useCheckInventoryMutation,
+    useGetProductsQuery,
+} from "../../state/apis/api";
+
 dayjs.extend(relativeTime);
 
-// Add/Edit Order Dialog
 const OrderFormDialog = ({
                              open,
                              onClose,
                              onSave,
                              order,
-                             products,
                              branches,
                              users,
+                             laserWorkers
                          }) => {
 
     const theme = useTheme();
@@ -72,8 +77,14 @@ const OrderFormDialog = ({
         notes: '',
     });
     const [errors, setErrors] = useState({});
+    const [nextClicked, setNextClicked] = useState(false);
+
+    const [inventoryCheckResult, setInventoryCheckResult] = useState(null);
 
     const steps = ['Products', 'Order Details', 'Customer & Payment', 'Review'];
+
+    const {data: products, isLoading: isProductsLoading} = useGetProductsQuery();
+    const [checkInventory, {isLoading: isCheckInventoryLoading}] = useCheckInventoryMutation();
 
     useEffect(() => {
         if (order) {
@@ -88,7 +99,7 @@ const OrderFormDialog = ({
                 engravedOnsite: order.engravedOnsite || false,
                 customInstructions: order.customInstructions || '',
                 assignedTo: order.assignedTo || null,
-                tax: order.tax || 0,
+                tax: (order.tax / order.subtotal) * 100 || 0,
                 paymentMethod: order.paymentMethod || 'CASH',
                 orderDate: dayjs(order.orderDate) || dayjs(),
                 dueDate: order.dueDate ? dayjs(order.dueDate) : null,
@@ -96,7 +107,7 @@ const OrderFormDialog = ({
             });
         } else {
             // Set default issued by user (first user in list)
-            const defaultUser = users[0];
+            const defaultUser = users[0] || null;
             setFormData((prev) => ({
                 ...prev,
                 issuedBy: defaultUser
@@ -106,25 +117,73 @@ const OrderFormDialog = ({
         }
     }, [order, users]);
 
+    useEffect(() => {
+        const performInventoryCheck = async () => {
+            // Clear result first
+            setInventoryCheckResult(null);
+
+            // Only check for SALE orders with branch and items
+            if (formData.orderType !== 'SALE' || !formData.branchId || formData.items.length === 0) {
+                return;
+            }
+
+            try {
+                const result = await checkInventory({
+                    items: formData.items.map(item => ({
+                        variantId: item.variantId,
+                        quantity: item.quantity
+                    })),
+                    branchId: formData.branchId,
+                }).unwrap();
+                setInventoryCheckResult(result);
+            } catch (error) {
+                console.error('Inventory check failed:', error);
+            }
+        };
+
+        performInventoryCheck();
+    }, [formData.orderType, formData.branchId, formData.items, checkInventory]);
+
+    useEffect(() => {
+        if(nextClicked) {
+            validateStep(activeStep);
+        }
+    }, [formData, activeStep]);
+
     const handleBranchChange = (branchId) => {
         const branch = branches.find((b) => b._id === branchId);
         setFormData((prev) => ({
             ...prev,
             branchId,
             branchInfo: branch
-                ? {name: branch.name, city: branch.city, address: branch.address}
+                ? {name: branch.name, city: branch.location.city, address: branch.location.address}
                 : null,
         }));
     };
 
     const handleUserChange = (field, userId) => {
-        const user = users.find((u) => u._id === userId);
-        setFormData((prev) => ({
-            ...prev,
-            [field]: user
-                ? {userId: user._id, firstName: user.firstName, lastName: user.lastName}
-                : null,
-        }));
+        let user;
+
+        switch (field) {
+            case 'issuedBy':
+                user = users.find((u) => u._id === userId);
+                setFormData((prev) => ({
+                    ...prev,
+                    [field]: user
+                        ? {userId: user._id, firstName: user.firstName, lastName: user.lastName}
+                        : null,
+                }));
+                break;
+            case 'assignedTo':
+                user = laserWorkers.find((u) => u._id === userId);
+                setFormData((prev) => ({
+                    ...prev,
+                    [field]: user
+                        ? {userId: user._id, firstName: user.firstName, lastName: user.lastName}
+                        : null,
+                }));
+                break;
+        }
     };
 
     const calculateTotals = () => {
@@ -184,6 +243,9 @@ const OrderFormDialog = ({
     const handleNext = () => {
         if (validateStep(activeStep)) {
             setActiveStep((prev) => prev + 1);
+            setNextClicked(false);
+        }else {
+            setNextClicked(true);
         }
     };
 
@@ -203,8 +265,9 @@ const OrderFormDialog = ({
                 totalAmount: totals.totalAmount,
                 totalCost: totals.totalCost,
                 grossProfit: totals.grossProfit,
-                status: 'PENDING',
+                status: (formData.orderType  === 'SALE' || formData.orderType === 'RETURN') && formData.paymentMethod !== 'PENDING' ? 'COMPLETED' : 'PENDING',
             };
+            console.log("Order Data", orderData);
             onSave(orderData);
             handleClose();
         }
@@ -243,7 +306,7 @@ const OrderFormDialog = ({
                         <ProductSelector
                             selectedItems={formData.items}
                             onItemsChange={(items) => setFormData((prev) => ({...prev, items}))}
-                            products={products}
+                            product={!isProductsLoading ? products : []}
                         />
                         {errors.items && (
                             <Alert severity="error" sx={{mt: 2}}>
@@ -258,7 +321,6 @@ const OrderFormDialog = ({
                     <Grid container spacing={3}>
                         <Grid size={{xs: 12, md: 6}}>
                             <FormControl fullWidth error={!!errors.orderType}>
-                                {/*<InputLabel>Order Type</InputLabel>*/}
                                 <TextField
                                     select
                                     value={formData.orderType}
@@ -295,45 +357,72 @@ const OrderFormDialog = ({
                         </Grid>
                         <Grid size={{xs: 12, md: 6}}>
                             <FormControl fullWidth error={!!errors.branchId}>
-                                {/*<InputLabel>Branch</InputLabel>*/}
-                                <TextField
-                                    select
-                                    value={formData.branchId}
-                                    label="Branch"
-                                    onChange={(e) => handleBranchChange(e.target.value)}
-                                    variant="outlined"
-                                >
-                                    {branches.map((branch) => (
-                                        <MenuItem key={branch._id} value={branch._id}>
-                                            <Stack>
-                                                <Typography variant="body2">{branch.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {branch.city}
-                                                </Typography>
-                                            </Stack>
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
+                                <Autocomplete
+                                    fullWidth
+                                    value={branches.find(b => b._id === formData.branchId) || null}
+                                    onChange={(_, newValue) => {
+                                        handleBranchChange(newValue?._id || '');
+                                    }}
+                                    options={branches}
+                                    groupBy={(option) => option.location.city}
+                                    getOptionLabel={(option) => option.name}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Branch"
+                                            error={!!errors.branchId}
+                                            helperText={errors.branchId}
+                                        />
+                                    )}
+                                    renderOption={(props, option) => {
+                                        const {key, ...restProps} = props;
+                                        return (
+                                            <li key={key} {...restProps}>
+                                                <Stack>
+                                                    <Typography variant="body2">{option.name}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {option.location.address}
+                                                    </Typography>
+                                                </Stack>
+                                            </li>
+                                        );
+                                    }}
+                                />
                                 {errors.branchId && <FormHelperText>{errors.branchId}</FormHelperText>}
                             </FormControl>
                         </Grid>
                         <Grid size={{xs: 12, md: 6}}>
                             <FormControl fullWidth error={!!errors.issuedBy}>
-                                {/*<InputLabel>Issued By</InputLabel>*/}
-                                <TextField
-                                    select
-                                    value={formData.issuedBy?.userId || ''}
-                                    label="Issued By"
-                                    onChange={(e) => handleUserChange('issuedBy', e.target.value)}
-                                    variant="outlined"
-                                >
-                                    {users.map((user) => (
-                                        <MenuItem key={user._id} value={user._id}>
-                                            {user.firstName} {user.lastName} ({user.role})
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                                {errors.issuedBy && <FormHelperText>{errors.issuedBy}</FormHelperText>}
+                                <Autocomplete
+                                    fullWidth
+                                    value={users.find(p => p._id === formData.issuedBy?.userId) || null}
+                                    onChange={(_, newValue) => {
+                                        handleUserChange('issuedBy', newValue?._id || '');
+                                    }}
+                                    options={users}
+                                    getOptionLabel={(option) => option.firstName + " " + option.lastName}
+                                    isOptionEqualToValue={(option, value) => option._id === value._id}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Issued By"
+                                            error={!!errors.issuedBy}
+                                            helperText={errors.issuedBy}
+                                        />
+                                    )}
+                                    renderOption={(props, option) => {
+                                        const {key, ...restProps} = props;
+                                        return (
+                                            <li key={key} {...restProps}>
+                                                <Stack>
+                                                    <Typography
+                                                        variant="body2">{option.firstName + " " + option.lastName}</Typography>
+                                                </Stack>
+                                            </li>
+                                        )
+                                    }}
+                                />
                             </FormControl>
                         </Grid>
                         <Grid size={{xs: 12, md: 6}}>
@@ -349,6 +438,30 @@ const OrderFormDialog = ({
                             </LocalizationProvider>
                         </Grid>
 
+                        {inventoryCheckResult && !inventoryCheckResult.allAvailable && inventoryCheckResult.items?.length > 0 && (
+                            <Grid size={12}>
+                                <Alert severity="warning" sx={{mt: 2}}>
+                                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                                        Insufficient Stock at Selected Branch:
+                                    </Typography>
+                                    <Stack spacing={0.5}>
+                                        {inventoryCheckResult.items
+                                            .filter(item => !item.sufficient)
+                                            .map((item, index) => {
+                                                const product = formData.items.find(i => i.variantId === item.variantId);
+                                                return (
+                                                    <Typography key={index} variant="body2">
+                                                        • {product?.productName} ({product?.variantName}):
+                                                        Need {item.requestedQuantity}, Available {item.available}
+                                                        (Short by {item.shortfall})
+                                                    </Typography>
+                                                );
+                                            })
+                                        }
+                                    </Stack>
+                                </Alert>
+                            </Grid>
+                        )}
                         {/* Custom Order Fields */}
                         {(formData.orderType === 'CUSTOM' || formData.orderType === 'PRODUCTION') && (
                             <>
@@ -375,7 +488,6 @@ const OrderFormDialog = ({
                                 </Grid>
                                 <Grid size={{xs: 12, md: 6}}>
                                     <FormControl fullWidth>
-                                        {/*<InputLabel>Assign To</InputLabel>*/}
                                         <TextField
                                             select
                                             value={formData.assignedTo?.userId || ''}
@@ -387,8 +499,7 @@ const OrderFormDialog = ({
                                             <MenuItem value="">
                                                 <em>None</em>
                                             </MenuItem>
-                                            {users
-                                                .filter((u) => u.role === 'Artisan')
+                                            {laserWorkers
                                                 .map((user) => (
                                                     <MenuItem key={user._id} value={user._id}>
                                                         {user.firstName} {user.lastName}
@@ -544,7 +655,7 @@ const OrderFormDialog = ({
                                     onChange={(e) =>
                                         setFormData((prev) => ({...prev, paymentMethod: e.target.value}))
                                     }
-                                    variant="standard"
+                                    variant="outlined"
                                 >
                                     <MenuItem value="CASH">
                                         <Stack direction="row" spacing={1} alignItems="center">
@@ -552,6 +663,7 @@ const OrderFormDialog = ({
                                             <span>Cash</span>
                                         </Stack>
                                     </MenuItem>
+
                                     <MenuItem value="CARD">
                                         <Stack direction="row" spacing={1} alignItems="center">
                                             <CreditCardIcon/>
@@ -586,12 +698,23 @@ const OrderFormDialog = ({
                                 label="Tax Rate (%)"
                                 type="number"
                                 value={formData.tax}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                    const value = e.target.value;
+
                                     setFormData((prev) => ({
                                         ...prev,
-                                        tax: Math.max(0, parseFloat(e.target.value) || 0),
-                                    }))
-                                }
+                                        tax: value === "" ? "" : Number(value),
+                                    }));
+                                }}
+                                onBlur={() => {
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        tax:
+                                            prev.tax === ""
+                                                ? 0
+                                                : Math.min(100, Math.max(0, prev.tax)),
+                                    }));
+                                }}
                                 slotProps={{
                                     input: {
                                         endAdornment: <InputAdornment position="end">%</InputAdornment>,
@@ -693,9 +816,14 @@ const OrderFormDialog = ({
                                             </Box>
                                             <Box height={"50%"} display="flex" alignItems="center">
                                                 <Typography variant="body2" fontWeight={500}>
-                                                    {formData.customer.name}
+                                                    {formData.customer.name} | {formData.customer.phone}
                                                 </Typography>
                                             </Box>
+                                            {/*{formData.customer.email && (*/}
+                                            {/*    <Typography variant="body2" fontWeight={500}>*/}
+                                            {/*        {formData.customer.email}*/}
+                                            {/*    </Typography>*/}
+                                            {/*)}*/}
                                         </Grid>
                                     )}
                                     <Grid size={6}>
@@ -799,35 +927,69 @@ const OrderFormDialog = ({
                 </Stepper>
                 {renderStepContent(activeStep)}
             </DialogContent>
-            <DialogActions sx={{px: 3, py: 2, backgroundColor: theme.palette.primary[600]}}>
-                <Button onClick={handleClose} variant="outlined" sx={{borderColor: theme.palette.primary[100]}}>
+            <DialogActions
+                sx={{px: 3, py: 2, backgroundColor: theme.palette.primary[600]}}
+            >
+                <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    sx={{borderColor: theme.palette.primary[100]}}>
                     <Typography
                         variant="h6"
                         color={theme.palette.secondary.light}
+                        textTransform="none"
                     >
                         Cancel
                     </Typography>
                 </Button>
                 <Box sx={{flex: 1}}/>
                 {activeStep > 0 && (
-                    <Button onClick={handleBack} variant="outlined" sx={{borderColor: theme.palette.primary[100]}}>
+                    <Button
+                        onClick={handleBack}
+                        variant="outlined"
+                        sx={{borderColor: theme.palette.primary[100]}}
+                    >
                         <Typography
                             variant="h6"
                             color={theme.palette.secondary.light}
+                            textTransform="none"
                         >
                             Back
                         </Typography>
                     </Button>
                 )}
                 {activeStep < steps.length - 1 ? (
-                    <Button onClick={handleNext} variant="outlined"
-                            sx={{backgroundColor: theme.palette.secondary.light}}>
-                        <Typography variant="h6" color={theme.palette.background.alt}
-                                    sx={{fontWeight: 600}}>Next</Typography>
+                    <Button
+                        variant="outlined"
+                        onClick={handleNext}
+                        disabled={(inventoryCheckResult && (activeStep === 1)) ? !inventoryCheckResult.allAvailable : false}
+                        sx={{
+                            backgroundColor: theme.palette.secondary.light,
+                            '&.Mui-disabled': {
+                                backgroundColor: theme.palette.action.disabledBackground,
+                            }
+                        }}
+                    >
+                        <Typography
+                            variant="h6"
+                            color={theme.palette.background.alt}
+                            textTransform="none"
+                            sx={{fontWeight: 600}}
+                        >
+                            Next
+                        </Typography>
                     </Button>
                 ) : (
-                    <Button onClick={handleSave} variant="contained" color="success" startIcon={<SaveIcon/>}>
-                        <Typography sx={{fontWeight: 600}}>
+                    <Button
+                        onClick={handleSave}
+                        variant="contained"
+                        color="success"
+                        startIcon={<SaveIcon/>}
+                    >
+                        <Typography
+                            textTransform="none"
+                            sx={{fontWeight: 600}}
+                        >
                             {order ? 'Update Order' : 'Create Order'}
                         </Typography>
                     </Button>

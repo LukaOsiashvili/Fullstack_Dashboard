@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React from 'react';
 import {Avatar, Box, Card, CardContent, Grid, Stack, styled, Typography, useTheme} from "@mui/material";
 import dayjs from 'dayjs';
 import {formatCurrency} from "./getFunctions"
@@ -8,8 +8,11 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+
 import relativeTime from "dayjs/plugin/relativeTime";
 
+// RTK Query Endpoint
+import {useGetStatsQuery} from "../../state/apis/api";
 
 dayjs.extend(relativeTime);
 
@@ -18,6 +21,8 @@ const StatsCard = styled(Card)((
 ) => ({
     position: 'relative',
     overflow: 'hidden',
+    width: '100%',
+    display: 'flex',
     '&::before': {
         content: '""',
         position: 'absolute',
@@ -27,41 +32,29 @@ const StatsCard = styled(Card)((
         height: 4,
     },
 }));
-// Stats Summary Cards
-const OrderStats = ({orders}) => {
+
+const OrderStats = () => {
 
     const theme = useTheme();
 
-    const stats = useMemo(() => {
-        const today = dayjs().startOf('day');
-        const todayOrders = orders.filter((o) => dayjs(o.orderDate).isAfter(today));
-        const pendingOrders = orders.filter((o) => o.status === 'PENDING');
-        const inProgressOrders = orders.filter((o) => o.status === 'IN_PROGRESS');
+    const payload = {
+        todayStartUTC: dayjs().startOf("day").toISOString(),
+        monthStartUTC: dayjs().startOf("month").toISOString(),
+    };
 
-        const totalRevenue = orders
-            .filter((o) => o.status === 'COMPLETED')
-            .reduce((sum, o) => sum + o.totalAmount, 0);
-
-        const totalProfit = orders
-            .filter((o) => o.status === 'COMPLETED')
-            .reduce((sum, o) => sum + o.grossProfit, 0);
-
-        return {
-            todayCount: todayOrders.length,
-            todayRevenue: todayOrders.reduce((sum, o) => sum + Math.max(0, o.totalAmount), 0),
-            pendingCount: pendingOrders.length,
-            inProgressCount: inProgressOrders.length,
-            totalRevenue,
-            totalProfit,
-        };
-    }, [orders]);
+    const {
+        data: stats,
+        isLoading: isStatsLoading,
+        isFetching: isStatsFetching
+    } = useGetStatsQuery(payload, {pollingInterval: 900_000}) //Refetch after 15 min
 
     return (
-        <Grid container spacing={2} sx={{mb: 3}}>
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
+        <Grid container spacing={2} sx={{mb: 3, alignItems: "stretch"}}>
+            <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                 <StatsCard color="primary">
                     <CardContent sx={{
-                        backgroundColor: theme.palette.background.alt
+                        backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -69,17 +62,18 @@ const OrderStats = ({orders}) => {
                                 <Typography variant="h6" fontWeight={500}>
                                     Today's Orders
                                 </Typography>
-                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700} sx={{mt: 1}}>
-                                    {stats.todayCount}
+                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700}
+                                            sx={{mt: 1}}>
+                                    {!isStatsLoading ? stats.todayOrders : "Loading..."}
                                 </Typography>
-                                <Typography variant="h6" sx={{mt: 0.5}}>
-                                    {formatCurrency(stats.todayRevenue)} revenue
+                                <Typography variant="h6" color={theme.palette.grey[400]} sx={{mt: 0.5}}>
+                                    Orders are issued
                                 </Typography>
                             </Box>
                             <Avatar sx={{
                                 width: "60px",
                                 height: "60px",
-                                bgcolor: theme.palette.primary.light,
+                                backgroundColor: theme.palette.primary.light,
                                 color: theme.palette.grey[300],
                             }}>
                                 <ReceiptLongIcon sx={{fontSize: 35}}/>
@@ -88,10 +82,11 @@ const OrderStats = ({orders}) => {
                     </CardContent>
                 </StatsCard>
             </Grid>
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
+            <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                 <StatsCard color="warning">
                     <CardContent sx={{
-                        backgroundColor: theme.palette.background.alt
+                        backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -99,17 +94,18 @@ const OrderStats = ({orders}) => {
                                 <Typography variant="h6" fontWeight={500}>
                                     Pending
                                 </Typography>
-                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700} sx={{mt: 1}}>
-                                    {stats.pendingCount}
+                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700}
+                                            sx={{mt: 1}}>
+                                    {!isStatsLoading ? stats.pendingOrders : "Loading..."}
                                 </Typography>
-                                <Typography variant="h6" sx={{mt: 0.5}}>
+                                <Typography variant="h6" color={theme.palette.grey[400]} sx={{mt: 0.5}}>
                                     Awaiting action
                                 </Typography>
                             </Box>
                             <Avatar sx={{
                                 width: "60px",
                                 height: "60px",
-                                bgcolor: 'warning.main',
+                                backgroundColor: 'warning.main',
                                 color: theme.palette.grey[300],
                             }}>
                                 <HourglassEmptyIcon sx={{fontSize: 35}}/>
@@ -118,10 +114,11 @@ const OrderStats = ({orders}) => {
                     </CardContent>
                 </StatsCard>
             </Grid>
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
+            <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                 <StatsCard color="info">
                     <CardContent sx={{
-                        backgroundColor: theme.palette.background.alt
+                        backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -129,17 +126,18 @@ const OrderStats = ({orders}) => {
                                 <Typography variant="h6" fontWeight={500}>
                                     In Progress
                                 </Typography>
-                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700} sx={{mt: 1}}>
-                                    {stats.inProgressCount}
+                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700}
+                                            sx={{mt: 1}}>
+                                    {!isStatsLoading ? stats.inProgressOrders : "Loading..."}
                                 </Typography>
-                                <Typography variant="h6" sx={{mt: 0.5}}>
+                                <Typography variant="h6" color={theme.palette.grey[400]} sx={{mt: 0.5}}>
                                     Being processed
                                 </Typography>
                             </Box>
                             <Avatar sx={{
                                 width: "60px",
                                 height: "60px",
-                                bgcolor: 'info.main',
+                                backgroundColor: 'info.main',
                                 color: theme.palette.grey[300],
                             }}>
                                 <PlayArrowIcon sx={{fontSize: 35}}/>
@@ -148,20 +146,22 @@ const OrderStats = ({orders}) => {
                     </CardContent>
                 </StatsCard>
             </Grid>
-            <Grid size={{xs: 12, sm: 6, md: 3}}>
+            <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                 <StatsCard color="success">
                     <CardContent
                         sx={{
-                            backgroundColor: theme.palette.background.alt
+                            backgroundColor: theme.palette.background.alt,
+                            flexGrow: 1
                         }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
                             <Box>
                                 <Typography variant="h6" fontWeight={500}>
-                                    Total Profit
+                                    Month Revenue
                                 </Typography>
-                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700} sx={{mt: 1}}>
-                                    {formatCurrency(stats.totalProfit)}
+                                <Typography variant="h2" color={theme.palette.secondary.light} fontWeight={700}
+                                            sx={{mt: 1}}>
+                                    {formatCurrency(stats?.revenue)}
                                 </Typography>
                                 <Stack direction="row" alignItems="center" spacing={0.5} sx={{mt: 0.5}}>
                                     <TrendingUpIcon sx={{fontSize: 'h6', color: 'success.main'}}/>
@@ -173,7 +173,7 @@ const OrderStats = ({orders}) => {
                             <Avatar sx={{
                                 width: "60px",
                                 height: "60px",
-                                bgcolor: 'success.main',
+                                backgroundColor: 'success.main',
                                 color: theme.palette.grey[300],
                             }}>
                                 <TrendingUpIcon sx={{fontSize: 35}}/>

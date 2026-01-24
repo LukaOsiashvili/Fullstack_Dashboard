@@ -11,7 +11,7 @@ import {
     Stack,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 
-    Typography,
+    Typography, useTheme,
 } from "@mui/material"
 
 // Icons
@@ -23,7 +23,8 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import EmailIcon from "@mui/icons-material/Email";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import PrintIcon from "@mui/icons-material/Print";
-import FileCopyIcon from "@mui/icons-material/FileCopy";
+
+// Utility Functions
 import {
     formatCurrency,
     getOrderTypeColor,
@@ -34,14 +35,15 @@ import {
 } from "./getFunctions";
 import dayjs from "dayjs";
 
+const OrderDetailDialog = ({open, onClose, order}) => {
 
-// Order Detail View Dialog
-const OrderDetailDialog = ({ open, onClose, order }) => {
+    const theme = useTheme();
+
     if (!order) return null;
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
+            <DialogTitle sx={{backgroundColor: theme.palette.primary[600]}}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Stack direction="row" spacing={2} alignItems="center">
                         <Typography variant="h6">Order Details</Typography>
@@ -59,18 +61,20 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                         />
                     </Stack>
                     <IconButton onClick={onClose}>
-                        <CloseIcon />
+                        <CloseIcon/>
                     </IconButton>
                 </Stack>
             </DialogTitle>
-            <DialogContent dividers>
+            <DialogContent dividers sx={{backgroundColor: theme.palette.primary[600]}}>
                 <Grid container spacing={3}>
                     {/* Order Info */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Grid size={{xs: 12, md: 6}} sx={{display: "flex"}}>
+                        <Paper variant="outlined"
+                               sx={{p: 2, backgroundColor: theme.palette.background.alt, flexGrow: 1}}>
+                            <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                                 Order Information
                             </Typography>
+                            <Divider sx={{mb: 1}}/>
                             <Stack spacing={1}>
                                 <Stack direction="row" justifyContent="space-between">
                                     <Typography variant="body2" color="text.secondary">Order ID:</Typography>
@@ -112,14 +116,16 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                     </Grid>
 
                     {/* Branch & Staff Info */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    <Grid size={{xs: 12, md: 6}} sx={{display: "flex"}}>
+                        <Paper variant="outlined"
+                               sx={{p: 2, backgroundColor: theme.palette.background.alt, flexGrow: 1}}>
+                            <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                                 Branch & Staff
                             </Typography>
+                            <Divider sx={{mb: 1}}/>
                             <Stack spacing={1}>
                                 <Stack direction="row" spacing={1} alignItems="center">
-                                    <StoreIcon fontSize="small" color="action" />
+                                    <StoreIcon fontSize="small" color="action"/>
                                     <Box>
                                         <Typography variant="body2" fontWeight={500}>
                                             {order.branchInfo.name}
@@ -129,9 +135,9 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                                         </Typography>
                                     </Box>
                                 </Stack>
-                                <Divider />
+                                <Divider/>
                                 <Stack direction="row" spacing={1} alignItems="center">
-                                    <PersonIcon fontSize="small" color="action" />
+                                    <PersonIcon fontSize="small" color="action"/>
                                     <Box>
                                         <Typography variant="body2" fontWeight={500}>
                                             Issued by: {order.issuedBy.firstName} {order.issuedBy.lastName}
@@ -140,12 +146,13 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                                 </Stack>
                                 {order.assignedTo && (
                                     <>
-                                        <Divider />
+                                        <Divider/>
                                         <Stack direction="row" spacing={1} alignItems="center">
-                                            <AssignmentIndIcon fontSize="small" color="action" />
+                                            <AssignmentIndIcon fontSize="small" color="action"/>
                                             <Box>
                                                 <Typography variant="body2" fontWeight={500}>
-                                                    Assigned to: {order.assignedTo.firstName} {order.assignedTo.lastName}
+                                                    Assigned
+                                                    to: {order.assignedTo.firstName} {order.assignedTo.lastName}
                                                 </Typography>
                                             </Box>
                                         </Stack>
@@ -157,25 +164,27 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
 
                     {/* Customer Info */}
                     {order.customer && order.customer.name && (
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <Paper variant="outlined" sx={{ p: 2 }}>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        <Grid size={{xs: 12, md: 6}} sx={{display: "flex"}}>
+                            <Paper variant="outlined"
+                                   sx={{p: 2, backgroundColor: theme.palette.background.alt, flexGrow: 1}}>
+                                <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                                     Customer Information
                                 </Typography>
+                                <Divider sx={{mb: 1}}/>
                                 <Stack spacing={1}>
                                     <Stack direction="row" spacing={1} alignItems="center">
-                                        <PersonIcon fontSize="small" color="action" />
+                                        <PersonIcon fontSize="small" color="action"/>
                                         <Typography variant="body2">{order.customer.name}</Typography>
                                     </Stack>
                                     {order.customer.phone && (
                                         <Stack direction="row" spacing={1} alignItems="center">
-                                            <PhoneIcon fontSize="small" color="action" />
+                                            <PhoneIcon fontSize="small" color="action"/>
                                             <Typography variant="body2">{order.customer.phone}</Typography>
                                         </Stack>
                                     )}
                                     {order.customer.email && (
                                         <Stack direction="row" spacing={1} alignItems="center">
-                                            <EmailIcon fontSize="small" color="action" />
+                                            <EmailIcon fontSize="small" color="action"/>
                                             <Typography variant="body2">{order.customer.email}</Typography>
                                         </Stack>
                                     )}
@@ -186,26 +195,28 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
 
                     {/* Custom Work Info */}
                     {(order.requiresEngraving || order.customInstructions) && (
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'warning.50' }}>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        <Grid size={{xs: 12, md: 6}} sx={{display: "flex"}}>
+                            <Paper variant="outlined"
+                                   sx={{p: 2, backgroundColor: theme.palette.background.alt, flexGrow: 1}}>
+                                <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                                     Custom Work Details
                                 </Typography>
+                                <Divider sx={{mb: 1}}/>
                                 <Stack spacing={1}>
                                     {order.requiresEngraving && (
                                         <Stack direction="row" spacing={1} alignItems="center">
-                                            <ContentCutIcon fontSize="small" color="warning" />
+                                            <ContentCutIcon fontSize="small" color="warning"/>
                                             <Typography variant="body2">
                                                 Engraving Required {order.engravedOnsite ? '(On-site)' : '(External)'}
                                             </Typography>
                                         </Stack>
                                     )}
                                     {order.customInstructions && (
-                                        <Box sx={{ mt: 1 }}>
+                                        <Box sx={{mt: 1}}>
                                             <Typography variant="caption" color="text.secondary">
                                                 Instructions:
                                             </Typography>
-                                            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                            <Typography variant="body2" sx={{fontStyle: 'italic'}}>
                                                 "{order.customInstructions}"
                                             </Typography>
                                         </Box>
@@ -217,19 +228,44 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
 
                     {/* Order Items */}
                     <Grid size={12}>
-                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                             Order Items
                         </Typography>
-                        <TableContainer component={Paper} variant="outlined">
+                        <TableContainer component={Paper} variant="outlined"
+                                        sx={{backgroundColor: theme.palette.background.alt}}>
                             <Table size="small">
                                 <TableHead>
-                                    <TableRow sx={{ bgcolor: 'grey.100' }}>
-                                        <TableCell>Product</TableCell>
-                                        <TableCell>Variant</TableCell>
-                                        <TableCell align="center">Qty</TableCell>
-                                        <TableCell align="right">Unit Price</TableCell>
-                                        <TableCell align="center">Discount</TableCell>
-                                        <TableCell align="right">Subtotal</TableCell>
+                                    <TableRow>
+                                        <TableCell>
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Product
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Variant
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Qty
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Unit Price
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Discount
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light} fontWeight={600}>
+                                                Subtotal
+                                            </Typography>
+                                        </TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -250,12 +286,12 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                                             <TableCell align="right">{formatCurrency(item.unitPrice)}</TableCell>
                                             <TableCell align="center">
                                                 {item.discount > 0 ? (
-                                                    <Chip size="small" label={`${item.discount}%`} color="success" />
+                                                    <Chip size="small" label={`${item.discount}%`} color="success"/>
                                                 ) : (
                                                     '-'
                                                 )}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600 }}>
+                                            <TableCell align="right" sx={{fontWeight: 600}}>
                                                 {formatCurrency(item.subtotal)}
                                             </TableCell>
                                         </TableRow>
@@ -267,19 +303,20 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
 
                     {/* Financial Summary */}
                     <Grid size={12}>
-                        <Paper variant="outlined" sx={{ p: 2 }}>
+                        <Paper variant="outlined" sx={{p: 2, backgroundColor: theme.palette.background.alt}}>
                             <Grid container spacing={2}>
-                                <Grid size={{ xs: 12, md: 8 }}>
+                                <Grid size={{xs: 12, md: 8}}>
                                     {order.notes && (
                                         <Box>
-                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                            <Typography variant="h6" gutterBottom color={theme.palette.secondary.light}>
                                                 Notes
                                             </Typography>
+                                            <Divider sx={{mb: 1}}/>
                                             <Typography variant="body2">{order.notes}</Typography>
                                         </Box>
                                     )}
                                     {order.cancellationReason && (
-                                        <Box sx={{ mt: order.notes ? 2 : 0 }}>
+                                        <Box sx={{mt: order.notes ? 2 : 0}}>
                                             <Typography variant="subtitle2" color="error" gutterBottom>
                                                 Cancellation Reason
                                             </Typography>
@@ -287,7 +324,7 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                                         </Box>
                                     )}
                                 </Grid>
-                                <Grid size={{ xs: 12, md: 4 }}>
+                                <Grid size={{xs: 12, md: 4}}>
                                     <Stack spacing={1}>
                                         <Stack direction="row" justifyContent="space-between">
                                             <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
@@ -297,20 +334,21 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                                             <Typography variant="body2" color="text.secondary">Tax:</Typography>
                                             <Typography variant="body2">{formatCurrency(order.tax)}</Typography>
                                         </Stack>
-                                        <Divider />
+                                        <Divider/>
                                         <Stack direction="row" justifyContent="space-between">
                                             <Typography variant="subtitle1" fontWeight={600}>Total:</Typography>
-                                            <Typography variant="subtitle1" fontWeight={700} color="primary">
+                                            <Typography variant="subtitle1" fontWeight={700} color={theme.palette.secondary.light}>
                                                 {formatCurrency(order.totalAmount)}
                                             </Typography>
                                         </Stack>
-                                        <Divider />
+                                        <Divider/>
                                         <Stack direction="row" justifyContent="space-between">
                                             <Typography variant="body2" color="text.secondary">Cost:</Typography>
                                             <Typography variant="body2">{formatCurrency(order.totalCost)}</Typography>
                                         </Stack>
                                         <Stack direction="row" justifyContent="space-between">
-                                            <Typography variant="body2" color="text.secondary">Gross Profit:</Typography>
+                                            <Typography variant="body2" color="text.secondary">Gross
+                                                Profit:</Typography>
                                             <Typography
                                                 variant="body2"
                                                 fontWeight={600}
@@ -326,14 +364,33 @@ const OrderDetailDialog = ({ open, onClose, order }) => {
                     </Grid>
                 </Grid>
             </DialogContent>
-            <DialogActions>
-                <Button startIcon={<PrintIcon />} variant="outlined">
-                    Print
+            <DialogActions sx={{backgroundColor: theme.palette.primary[600]}}>
+                <Button
+                    startIcon={<PrintIcon sx={{color: theme.palette.secondary.light}} />}
+                    variant="outlined"
+                    sx={{borderColor: theme.palette.primary[100]}}
+                >
+                    <Typography
+                        variant="h6"
+                        color={theme.palette.secondary.light}
+                        textTransform="none"
+                    >
+                        Print
+                    </Typography>
                 </Button>
-                <Button startIcon={<FileCopyIcon />} variant="outlined">
-                    Duplicate
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    sx={{borderColor: theme.palette.primary[100]}}
+                >
+                    <Typography
+                        variant="h6"
+                        color={theme.palette.secondary.light}
+                        textTransform="none"
+                    >
+                        Close
+                    </Typography>
                 </Button>
-                <Button onClick={onClose}>Close</Button>
             </DialogActions>
         </Dialog>
     );

@@ -11,7 +11,7 @@ import {
 
 } from "@mui/material";
 import {DatePicker, LocalizationProvider} from "@mui/x-date-pickers";
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import {AdapterDayjs} from '@mui/x-date-pickers/AdapterDayjs';
 import {getOrderTypeColor, getOrderTypeIcon, getPaymentMethodIcon, getStatusColor} from "./getFunctions";
 // Icons
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -19,8 +19,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-
-// Filter Drawer Component
 const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
 
     const theme = useTheme()
@@ -60,7 +58,7 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
                 {/* Header Section */}
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                     <Typography variant="h4">
-                        <FilterListIcon sx={{mr: 1, verticalAlign: 'top', fontSize: 25}} />
+                        <FilterListIcon sx={{mr: 1, verticalAlign: 'top', fontSize: 25}}/>
                         Filters
                     </Typography>
                     <IconButton onClick={onClose}>
@@ -71,14 +69,16 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
                 <Stack spacing={3}>
                     {/* Status Filter */}
                     <Box>
-                        <Typography variant="subtitle2" gutterBottom>
+                        <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>
                             Status
                         </Typography>
+                        <Divider sx={{mb: 1}}/>
                         <Stack direction="row" flexWrap="wrap" gap={1}>
                             {statusOptions.map((status) => (
                                 <Chip
                                     key={status}
-                                    label={status.replace('_', ' ')}
+                                    label={<Typography variant="subtitle2"
+                                                       sx={{textTransform: "capitalize"}}>{status.replace('_', " ").toLowerCase()}</Typography>}
                                     onClick={() => {
                                         const newStatus = localFilters.status.includes(status)
                                             ? localFilters.status.filter((s) => s !== status)
@@ -96,14 +96,17 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
 
                     {/* Order Type Filter */}
                     <Box>
-                        <Typography variant="subtitle2" gutterBottom>
+                        <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>
                             Order Type
                         </Typography>
+                        <Divider sx={{mb: 1}}/>
                         <Stack direction="row" flexWrap="wrap" gap={1}>
                             {orderTypeOptions.map((type) => (
                                 <Chip
                                     key={type}
-                                    label={type}
+                                    // label={type}
+                                    label={<Typography variant="subtitle2"
+                                                       sx={{textTransform: "capitalize"}}>{type.toLowerCase()}</Typography>}
                                     icon={getOrderTypeIcon(type)}
                                     onClick={() => {
                                         const newTypes = localFilters.orderType.includes(type)
@@ -130,8 +133,8 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
                             onChange={(e) => setLocalFilters((prev) => ({...prev, branchId: e.target.value}))}
                             variant="outlined"
                         >
-                            <MenuItem value="">All Branches</MenuItem>
-                            {branches.map((branch) => (
+                            <MenuItem value=""><i>All Branches</i></MenuItem>
+                            {branches?.map((branch) => (
                                 <MenuItem key={branch._id} value={branch._id}>
                                     {branch.name}
                                 </MenuItem>
@@ -141,9 +144,10 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
 
                     {/* Date Range */}
                     <Box>
-                        <Typography variant="subtitle2" gutterBottom>
+                        <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>
                             Date Range
                         </Typography>
+                        <Divider sx={{mb: 1}}/>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
                             <Stack spacing={2}>
                                 <DatePicker
@@ -174,14 +178,17 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
 
                     {/* Payment Method Filter */}
                     <Box>
-                        <Typography variant="subtitle2" gutterBottom>
+                        <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>
                             Payment Method
                         </Typography>
+                        <Divider sx={{mb: 1}}/>
                         <Stack direction="row" flexWrap="wrap" gap={1}>
                             {paymentMethodOptions.map((method) => (
                                 <Chip
                                     key={method}
-                                    label={method}
+                                    // label={method}
+                                    label={<Typography variant="subtitle2"
+                                                       sx={{textTransform: "capitalize"}}>{method.toLowerCase()}</Typography>}
                                     icon={getPaymentMethodIcon(method)}
                                     onClick={() => {
                                         const newMethods = localFilters.paymentMethod.includes(method)
@@ -200,9 +207,10 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
 
                     {/* Amount Range */}
                     <Box>
-                        <Typography variant="subtitle2" gutterBottom mb={"15px"}>
+                        <Typography variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>
                             Amount Range
                         </Typography>
+                        <Divider sx={{mb: 2}}/>
                         <Stack direction="row" spacing={2}>
                             <TextField
                                 size="small"
@@ -247,8 +255,9 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
                             sx={{borderColor: theme.palette.primary[100]}}
                         >
                             <Typography
-                                variant="h6"
+                                variant="h5"
                                 color={theme.palette.secondary.light}
+                                textTransform="none"
                             >
                                 Reset
                             </Typography>
@@ -261,8 +270,9 @@ const FilterDrawer = ({open, onClose, filters, onFilterChange, branches}) => {
                             sx={{backgroundColor: theme.palette.secondary.light}}
                         >
                             <Typography
-                                variant="h6"
+                                variant="h5"
                                 color={theme.palette.background.alt}
+                                textTransform="none"
                                 sx={{fontWeight: 600}}
                             >
                                 Apply

@@ -18,7 +18,7 @@ import Materials from "./scenes/materials";
 import Branches from "./scenes/branches"
 import BranchDetails from "./scenes/branches/branchDetails";
 import OrdersPage from "./scenes/orders";
-import CutOrdersPage from "./scenes/cutOrders/cutOrders2";
+import CutOrdersPage from "./scenes/cutOrders/cutOrders";
 
 function App() {
 

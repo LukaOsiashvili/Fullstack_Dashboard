@@ -119,6 +119,68 @@ module.exports = {
         }
     },
 
+    checkInventory: async (req, res) => {
+        try{
+            const {items, branchId} = req.body; // items = [{variantId, quantity}]
+
+            if (!items || !Array.isArray(items) || !branchId) {
+                return res.status(400).json({message: "Variant Id or Branch ID does not exist"});
+            }
+            const variantIds = items.map((item) => {
+                return new mongoose.Types.ObjectId(item.variantId);
+            })
+
+            const inventory = await InventoryModel.find({
+                variantId: {$in: variantIds},
+                branchId: new mongoose.Types.ObjectId(branchId),
+            })
+
+            const inventoryMap = inventory.reduce((acc, record) => {
+                acc[record.variantId.toString()] = {
+                    stock: record.stock,
+                    reserved: record.reserved,
+                    available: record.stock - record.reserved
+                }
+                return acc;
+            }, {})
+
+            const results = items.map((item) => {
+                const inventory = inventoryMap[item.variantId];
+
+                if (!inventory) {
+                    return {
+                        variantId: item.variantId,
+                        available: false,
+                        reason: 'Variant not found in this branch'
+                    }
+                }
+
+                const isAvailable = inventory.available >= item.quantity;
+
+                return {
+                    variantId: item.variantId,
+                    requestedQuantity: item.quantity,
+                    stock: inventory.stock,
+                    reserved: inventory.reserved,
+                    available: inventory.available,
+                    sufficient: isAvailable,
+                    shortfall: isAvailable ? 0 : item.quantity - inventory.available,
+                }
+            })
+
+            const allAvailable = results.every(r => r.sufficient);
+
+            return res.status(200).json({
+                allAvailable,
+                items: results
+            });
+
+        } catch (error){
+            console.log(error);
+            return res.status(500).json(error);
+        }
+    },
+
     updateInventoryByVariant: async (req, res) => {
 
         const data = req.body;
@@ -210,7 +272,7 @@ module.exports = {
             );
 
             if(!updateProduct){
-                throw new Error("Product Not Found");
+                return res.status(200).json({message: "Product Not Found"});
             }
 
             res.status(200).json({message: "Product Photo Uploaded Successfully"});

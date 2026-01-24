@@ -16,6 +16,7 @@ router.get("/getOneProductById/:id", APISecurity.requireLogin, productsService.g
 router.get("/getCategories", APISecurity.requireLogin, productsService.getCategories);
 router.get("/getProductsByCategory/:category", APISecurity.requireLogin, productsService.getProductsByCategory);
 router.post("/getInventoryByVariant", APISecurity.requireLogin, productsService.getInventoryByVariant);
+router.post("/checkInventory", APISecurity.requireLogin, productsService.checkInventory);
 router.put("/updateInventoryByVariant", APISecurity.requireLogin, productsService.updateInventoryByVariant);
 router.post("/addProduct", APISecurity.requireLogin, productsService.addProduct);
 router.put("/addVariant/:id", APISecurity.requireLogin, productsService.addVariant);

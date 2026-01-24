@@ -3,135 +3,351 @@ import {useLoginMutation} from "../../state/apis/authApi";
 import {useDispatch} from "react-redux";
 import {setCredentials} from "state/authSlice";
 import {useNavigate} from "react-router-dom";
-import {Box, Button, FilledInput, FormControl, InputLabel, InputAdornment, IconButton, TextField, Typography, CircularProgress, useTheme} from '@mui/material';
+import {
+    Alert,
+    alpha,
+    Box,
+    Button,
+    CircularProgress,
+    Collapse,
+    Fade,
+    IconButton,
+    InputAdornment,
+    Paper,
+    Stack,
+    TextField,
+    Typography,
+    useTheme,
+} from '@mui/material';
+
+// Icons
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+
 import {Form, Formik} from 'formik';
 import * as yup from 'yup';
-import toast from "react-hot-toast"
-import React from 'react'
-import Navbar from "../../components/Navbar";
+import toast from "react-hot-toast";
+
+const validationSchema = yup.object().shape({
+    username: yup.string()
+        .required('Username is required'),
+    password: yup.string()
+        .required('Password is required'),
+});
 
 const initialValues = {
     username: '',
     password: '',
-}
+};
 
 const Login = () => {
     const theme = useTheme();
-    const [login] = useLoginMutation();
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [loginError, setLoginError] = useState(null);
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const [showPassword, setShowPassword] = useState(false);
+
+    const isDark = theme.palette.mode === 'dark';
+
+    const [login] = useLoginMutation();
 
     const handleClickShowPassword = () => setShowPassword((show) => !show);
+    const handleMouseDownPassword = (event) => event.preventDefault();
 
-    const handleMouseDownPassword = (event) => {
-        event.preventDefault();
-    };
+    const handleFormSubmit = async (values, {setSubmitting}) => {
+        setLoginError(null);
 
-    const handleMouseUpPassword = (event) => {
-        event.preventDefault();
-    };
-
-    const handleFormSubmit = async (values, {setSubmitting, resetForm}) => {
-        try{
+        try {
             const response = await login(values).unwrap();
-            console.log(response)
-            dispatch(setCredentials({user: values.username, accessToken: response.accessToken}));
+            dispatch(setCredentials({
+                user: values.username,
+                accessToken: response.accessToken,
+            }));
+            toast.success("Welcome back!");
             navigate("/dashboard");
-            toast.success("Login Successful");
-        }catch(err){
-            console.log(err);
-            // alert("login failed")
-            toast.error("Login Failed")
-        }finally{
+        } catch (err) {
+            console.error(err);
+            const errorMessage = err?.data?.message || "Invalid credentials. Please try again.";
+            setLoginError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
             setSubmitting(false);
-            resetForm(true)
         }
-    }
+    };
 
-    const checkoutSchema = yup.object().shape({
-        username: yup.string().required('Username is Required'),
-        password: yup.string()
-            .required('Password is Required')
-            // .min(8, "The Password Must Be at Least 8 Characters Long")
-            // .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password Must Contain At Least: 1 Uppercase Letter, 1 Lowercase Letter, 1 Number")
-    })
-
+    const paperStyleDarkElevated = {
+        backgroundColor: isDark ? theme.palette.primary[600] : theme.palette.grey[50],
+        border: `1px solid ${alpha(isDark ? theme.palette.primary[300] : theme.palette.grey[200], 0.3)}`,
+        boxShadow: isDark
+            ? `0 0 60px ${alpha(theme.palette.secondary[500], 0.15)}`
+            : `0 20px 40px ${alpha(theme.palette.common.black, 0.1)}`,
+    };
 
     return (
-        // <Box height="100vh">
-            //{/*<Navbar isLogIn={true}/>*/}
-            <Box height="80vh" display="flex" justifyContent="center" alignItems="center">
-                <Formik initialValues={initialValues} onSubmit={handleFormSubmit} validationSchema={checkoutSchema}>
-                    {({
-                          values,
-                          errors,
-                          touched,
-                          handleBlur,
-                          handleChange,
-                          handleSubmit,
-                          isSubmitting,
-                      }) => (
-                        <Form onSubmit={handleSubmit}>
-                            <Box width={"40vh"} p={"1rem 0"} display={"flex"} flexDirection={"column"} alignItems={"center"} borderRadius={"10px"} sx={{backgroundColor: theme.palette.background.alt}}>
-                                <TextField
-                                    fullWidth
-                                    variant="filled"
-                                    type="text"
-                                    label="Username"
-                                    onBlur={handleBlur}
-                                    onChange={handleChange}
-                                    value={values.username}
-                                    name="username"
-                                    error={!!touched.username && !!errors.username}
-                                    helperText={touched.username && errors.username}
-                                    margin="normal"
-                                    sx={{ m: "1rem 1.5rem 1rem 1.5rem", width: '90%' }}
-                                />
-                                <FormControl sx={{ m: "0 1.5rem 1rem 1.5rem", width: '90%' }} variant="filled">
+        <Box
+            sx={{
+                height: "90vh",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                background: isDark
+                    ? `radial-gradient(circle at 50% 50%, 
+                          ${theme.palette.primary[500]} 0%, 
+                          ${theme.palette.primary[600]} 40%,
+                          ${theme.palette.primary[700]} 100%)`
+                    : `radial-gradient(circle at 50% 50%, 
+                          ${theme.palette.grey[50]} 0%, 
+                          ${theme.palette.grey[100]} 40%,
+                          ${theme.palette.grey[200]} 100%)`,
+                p: 2,
+            }}
+        >
+            <Fade in timeout={500}>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        width: "100%",
+                        maxWidth: 420,
+                        p: {xs: 3, sm: 4},
+                        borderRadius: 3,
+                        ...(paperStyleDarkElevated),
+                    }}
+                >
+                    {/* Header */}
+                    <Stack alignItems="center" spacing={1} sx={{mb: 3}}>
+                        <Box
+                            sx={{
+                                width: 60,
+                                height: 60,
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: `radial-gradient(circle at 30% 30%, 
+                                              ${theme.palette.secondary[400]}, 
+                                              ${theme.palette.secondary[600]})`,
+                                boxShadow: `0 4px 20px ${alpha(theme.palette.secondary[500], 0.4)}`,
+                                mb: 1,
+                            }}
+                        >
+                            <LockOutlinedIcon sx={{fontSize: 30, color: theme.palette.primary[700]}}/>
+                        </Box>
+
+                        <Typography
+                            variant="h3"
+                            fontWeight={700}
+                            color={isDark ? theme.palette.grey[100] : theme.palette.primary[700]}
+                        >
+                            Welcome Back
+                        </Typography>
+
+                        <Typography
+                            variant="body1"
+                            color={isDark ? theme.palette.grey[300] : theme.palette.grey[600]}
+                            textAlign="center"
+                        >
+                            Sign in to your dashboard
+                        </Typography>
+                    </Stack>
+
+                    {/* Error Alert */}
+                    <Collapse in={Boolean(loginError)}>
+                        <Alert
+                            severity="error"
+                            onClose={() => setLoginError(null)}
+                            sx={{mb: 2, borderRadius: 2}}
+                        >
+                            {loginError}
+                        </Alert>
+                    </Collapse>
+
+                    <Formik
+                        initialValues={initialValues}
+                        onSubmit={handleFormSubmit}
+                        validationSchema={validationSchema}
+                    >
+                        {({
+                              values,
+                              errors,
+                              touched,
+                              handleBlur,
+                              handleChange,
+                              handleSubmit,
+                              isSubmitting,
+                          }) => (
+                            <Form onSubmit={handleSubmit}>
+                                <Stack spacing={2.5}>
+                                    {/* Username Field */}
+                                    <TextField
+                                        fullWidth
+                                        variant="filled"
+                                        label="Username"
+                                        name="username"
+                                        autoComplete="off"
+                                        autoFocus
+                                        value={values.username}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        error={touched.username && Boolean(errors.username)}
+                                        helperText={touched.username && errors.username}
+                                        disabled={isSubmitting}
+                                        slotProps={{
+                                            input: {
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <PersonOutlineIcon
+                                                            sx={{
+                                                                color: touched.username && errors.username
+                                                                    ? 'error.main'
+                                                                    : theme.palette.grey[400]
+                                                            }}
+                                                        />
+                                                    </InputAdornment>
+                                                ),
+                                            },
+                                        }}
+                                        sx={{
+                                            '& .MuiFilledInput-root': {
+                                                borderRadius: 2,
+                                                backgroundColor: alpha(
+                                                    isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                    isDark ? 0.5 : 0.8
+                                                ),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(
+                                                        isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                        isDark ? 0.7 : 1
+                                                    ),
+                                                },
+                                                '&.Mui-focused': {
+                                                    backgroundColor: alpha(
+                                                        isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                        isDark ? 0.7 : 1
+                                                    ),
+                                                },
+                                            },
+                                        }}
+                                    />
+
+                                    {/* Password Field */}
                                     <TextField
                                         fullWidth
                                         variant="filled"
                                         label="Password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        onBlur={handleBlur}
-                                        onChange={handleChange}
-                                        value={values.password}
                                         name="password"
-                                        error={!!touched.password && !!errors.password}
+                                        type={showPassword ? 'text' : 'password'}
+                                        autoComplete="current-password"
+                                        value={values.password}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        error={touched.password && Boolean(errors.password)}
                                         helperText={touched.password && errors.password}
-                                        margin="normal"
-                                        endAdornment={
-                                            <InputAdornment position="end">
-                                                <IconButton
-                                                    aria-label={
-                                                        showPassword ? 'hide the password' : 'display the password'
-                                                    }
-                                                    onClick={handleClickShowPassword}
-                                                    onMouseDown={handleMouseDownPassword}
-                                                    onMouseUp={handleMouseUpPassword}
-                                                    edge="end"
-                                                >
-                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                                                </IconButton>
-                                            </InputAdornment>
-                                        }
+                                        disabled={isSubmitting}
+                                        slotProps={{
+                                            input: {
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <LockOutlinedIcon
+                                                            sx={{
+                                                                color: touched.password && errors.password
+                                                                    ? 'error.main'
+                                                                    : theme.palette.grey[400]
+                                                            }}
+                                                        />
+                                                    </InputAdornment>
+                                                ),
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        <IconButton
+                                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                            onClick={handleClickShowPassword}
+                                                            onMouseDown={handleMouseDownPassword}
+                                                            edge="end"
+                                                            disabled={isSubmitting}
+                                                            size="small"
+                                                        >
+                                                            {showPassword ? <VisibilityOff/> : <Visibility/>}
+                                                        </IconButton>
+                                                    </InputAdornment>
+                                                ),
+                                            },
+                                        }}
+                                        sx={{
+                                            '& .MuiFilledInput-root': {
+                                                borderRadius: 2,
+                                                backgroundColor: alpha(
+                                                    isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                    isDark ? 0.5 : 0.8
+                                                ),
+                                                '&:hover': {
+                                                    backgroundColor: alpha(
+                                                        isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                        isDark ? 0.7 : 1
+                                                    ),
+                                                },
+                                                '&.Mui-focused': {
+                                                    backgroundColor: alpha(
+                                                        isDark ? theme.palette.primary[700] : theme.palette.grey[100],
+                                                        isDark ? 0.7 : 1
+                                                    ),
+                                                },
+                                            },
+                                        }}
                                     />
-                                </FormControl>
-                                <Button type={"submit"} sx={{ m: "0 1.5rem 1rem 1.5rem", width: '90%', backgroundColor: theme.palette.secondary.light }}>
-                                    {isSubmitting
-                                        ? <CircularProgress size={24} sx={{ color: "white" }} />
-                                        : <Typography variant="h6" color={theme.palette.background.alt}>Submit</Typography>
-                                    }
-                                </Button>
-                            </Box>
-                        </Form>
-                    )}
-                </Formik>
-            </Box>
-        // </Box>
-    )
-}
-export default Login
+
+                                    {/* Submit Button */}
+                                    <Button
+                                        type="submit"
+                                        fullWidth
+                                        variant="contained"
+                                        size="large"
+                                        disabled={isSubmitting}
+                                        sx={{
+                                            py: 1.5,
+                                            mt: 1,
+                                            fontWeight: 600,
+                                            textTransform: 'none',
+                                            fontSize: '1rem',
+                                            borderRadius: 2,
+                                            color: theme.palette.primary[700],
+                                            background: `radial-gradient(circle at 30% 30%, 
+                                                            ${theme.palette.secondary[400]}, 
+                                                            ${theme.palette.secondary[500]})`,
+                                            boxShadow: `0 4px 16px ${alpha(theme.palette.secondary[500], 0.4)}`,
+                                            transition: 'all 0.2s ease-in-out',
+                                            '&:hover': {
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: `0 6px 24px ${alpha(theme.palette.secondary[500], 0.5)}`,
+                                                background: `radial-gradient(circle at 30% 30%, 
+                                                                ${theme.palette.secondary[300]}, 
+                                                                ${theme.palette.secondary[400]})`,
+                                            },
+                                            '&:active': {
+                                                transform: 'translateY(0)',
+                                            },
+                                            '&.Mui-disabled': {
+                                                background: theme.palette.grey[400],
+                                                color: theme.palette.grey[600],
+                                            },
+                                        }}
+                                    >
+                                        {isSubmitting ? (
+                                            <CircularProgress size={24} sx={{color: theme.palette.primary[700]}}/>
+                                        ) : (
+                                            'Sign In'
+                                        )}
+                                    </Button>
+                                </Stack>
+                            </Form>
+                        )}
+                    </Formik>
+                </Paper>
+            </Fade>
+        </Box>
+    );
+};
+
+export default Login;

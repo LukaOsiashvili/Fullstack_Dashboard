@@ -13,6 +13,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+router.get("/getAllBranches", APISecurity.requireLogin, branchesService.getAllBranches);
 router.get("/getBranchCities", APISecurity.requireLogin, branchesService.getBranchCities);
 router.get("/getBranchesByCity/:city", APISecurity.requireLogin, branchesService.getBranchesByCity);
 router.get("/getBranchById/:id", APISecurity.requireLogin, branchesService.getBranchById);

@@ -5,6 +5,18 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports = {
+
+    getAllBranches: async (req, res) => {
+        try{
+            const branches = await BranchesModel.find({});
+            res.status(200).json(branches);
+        } catch (error) {
+            res.status(500).json(error);
+            console.log(error);
+        }
+    },
+
+
     getBranchCities: async (req, res) => {
         try{
             const cities = await BranchesModel.distinct('location.city');
@@ -212,7 +224,7 @@ module.exports = {
             );
 
             if(!updateBranch){
-                throw new Error("Branch Not Found");
+                return res.status(400).json({message: "Branch Not Found"});
             }
 
             res.status(200).json({message: "Branch Photo Uploaded Successfully"});

@@ -19,6 +19,12 @@ export const api = createApi({
             query: () => '/users/all',
             providesTags: ["AllUsers"]
         }),
+        getUsersByRoles: build.query({
+            query: (roles) => ({
+                url: '/users/getUsersByRole',
+                params: roles ? {roles} : undefined
+            })
+        }),
         updateUserById: build.mutation({
             query: ({updatedData, id}) => ({
                 url: `/users/updateUser/${id}`,
@@ -129,8 +135,10 @@ export const api = createApi({
                 method: "GET"
             }),
             providesTags: (result, error, productId) =>
-                [{type: "Product", id: productId}]
+                [{type: "Product", id: productId}],
+            keepUnusedDataFor: 0
         }),
+            //INVENTORY
         getInventoryByVariant: build.mutation({
             query: (variantData) => ({
                 url: `/products/getInventoryByVariant`,
@@ -144,6 +152,13 @@ export const api = createApi({
             providesTags: (result, error, arg) =>
                 result ? [{type: "Inventory", id: arg.variantId}] : []
         }),
+        checkInventory: build.mutation({
+            query: (data) => ({
+                url: `/products/checkInventory`,
+                method: "POST",
+                body: data
+            })
+        }),
         updateInventoryByVariant: build.mutation({
             query: (data) => ({
                 url: `/products/updateInventoryByVariant`,
@@ -153,6 +168,7 @@ export const api = createApi({
             invalidatesTags: (result, error, arg) =>
                 [{type: "Inventory", id: arg.variantId}]
         }),
+            //END INVENTORY
         updateProduct: build.mutation({
             query: ({productId, data}) => ({
                 url: `/products/updateProduct/${productId}`,
@@ -215,6 +231,12 @@ export const api = createApi({
                 [{type: "Materials", id: arg.materialId}]
         }),
         // Branch Endpoints
+        getAllBranches: build.query({
+            query: () => ({
+                url: `/branches/getAllBranches`,
+                method: "GET"
+            })
+        }),
         getBranchCities: build.query({
             query: () => ({
                 url: `/branches/getBranchCities`,
@@ -291,17 +313,120 @@ export const api = createApi({
             }),
             invalidatesTags: ["Branch"]
         }),
+        //ORDERS
+        getAllOrders: build.query({
+            query: ({page, size, filters}) => ({
+                url: `/orders/getAllOrders`,
+                method: "GET",
+                params: {
+                    page,
+                    size,
+                    ...filters
+                }
+            }),
+            providesTags: ["Orders"],
+            keepUnusedDataFor: 0
+        }),
+        getStats: build.query({
+            query: (data) => ({
+                url: `/orders/getStats`,
+                method: "POST",
+                body: data
+            }),
+            providesTags: ["OrderPageStats"]
+        }),
+        addOrder: build.mutation({
+            query: (formData) => ({
+                url: `/orders/addOrder`,
+                method: "POST",
+                body: formData
+            }),
+            invalidatesTags: ["Orders"]
+        }),
+        updateOrder: build.mutation({
+            query: ({orderId, formData}) => ({
+                url: `/orders/updateOrder/${orderId}`,
+                method: "PUT",
+                body: formData
+            }),
+            invalidatesTags: ["Orders"]
+        }),
+        updateOrderStatus: build.mutation({
+            query: ({orderId, formData}) => ({
+                url: `/orders/updateOrder/${orderId}/status`,
+                method: "PUT",
+                body: formData
+            }),
+            invalidatesTags: ["Orders"]
+        }),
+        //CUT ORDERS
+        getAllCutOrders: build.query({
+            query: ({page, size, filters}) => ({
+                url: `/cutOrders/getAllCutOrders`,
+                method: "GET",
+                params: {
+                    page,
+                    size,
+                    ...filters
+                }
+            }),
+            providesTags: ["Cut_Orders"],
+            keepUnusedDataFor: 0
+        }),
+        getCutOrderStats: build.query({
+            query: (data) => ({
+                url: `/cutOrders/getCutOrderStats/`,
+                method: "POST",
+                body: data
+            }),
+            providesTags: ["CutOrdersPageStats"],
+            keepUnusedDataFor: 0
+        }),
+        addCutOrder: build.mutation({
+            query: (data) => ({
+                url: `/cutOrders/addCutOrder`,
+                method: "POST",
+                body: data
+            }),
+            invalidatesTags: ["Cut_Orders", "CutOrdersPageStats"]
+        }),
+        addNewIssue: build.mutation({
+            query: ({cutOrderId, data}) => ({
+                url: `/cutOrders/addNewIssue/${cutOrderId}`,
+                method: "POST",
+                body: data
+            }),
+            invalidatesTags: ["Cut_Orders"]
+        }),
+        resolveIssue: build.mutation({
+            query: ({cutOrderId, issueId}) => ({
+                url: `/cutOrders/resolveIssue/${cutOrderId}/${issueId}`,
+                method: "PUT",
+            }),
+            invalidatesTags: ["Cut_Orders"]
+        }),
+        updateCutOrder: build.mutation({
+            query: ({cutOrderId, data}) => ({
+                url: `/cutOrders/updateCutOrder/${cutOrderId}`,
+                method: "PUT",
+                body: data
+            }),
+            invalidatesTags: ["Cut_Orders", "CutOrdersPageStats"]
+        })
     })
 })
 
 export const {
+    //USERS
     useGetAllUsersQuery,
+    useGetUsersByRolesQuery,
     useUpdateUserByIdMutation,
     useDeleteUserByIdMutation,
     useGetUserInfoQuery,
     useUpdateUserInfoMutation,
     useGetAvatarQuery,
     useUploadAvatarMutation,
+    //PRODUCTS
     useAddProductMutation,
     useAddVariantMutation,
     useUploadProductPhotoMutation,
@@ -311,13 +436,19 @@ export const {
     useGetCategoriesQuery,
     useUpdateProductMutation,
     useLazyGetProductsByCategoryQuery,
+        //INVENTORY | PRODUCTS
     useGetInventoryByVariantMutation,
+    useCheckInventoryMutation,
     useUpdateInventoryByVariantMutation,
+    //MATERIALS
     useGetAllMaterialsQuery,
+    useLazyGetAllMaterialsQuery,
     useGetMaterialNamesQuery,
     useGetMaterialsByNameMutation,
     useAddMaterialMutation,
     useUpdateMaterialInventoryMutation,
+    //BRANCHES
+    useGetAllBranchesQuery,
     useGetBranchCitiesQuery,
     useLazyGetBranchesByCityQuery,
     useGetBranchByIdQuery,
@@ -327,4 +458,17 @@ export const {
     useUploadBranchPhotoMutation,
     useGetBranchPhotoQuery,
     useUpdateBranchMutation,
+    //ORDERS
+    useGetAllOrdersQuery,
+    useGetStatsQuery,
+    useAddOrderMutation,
+    useUpdateOrderMutation,
+    useUpdateOrderStatusMutation,
+    //CUT ORDERS
+    useGetAllCutOrdersQuery,
+    useGetCutOrderStatsQuery,
+    useAddCutOrderMutation,
+    useAddNewIssueMutation,
+    useResolveIssueMutation,
+    useUpdateCutOrderMutation,
 } = api

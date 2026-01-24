@@ -17,7 +17,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
+const ActionMenu = ({anchorEl, order, onClose, onAction, actions}) => (
     <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -29,7 +29,7 @@ const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
         }}
         >
             <ListItemIcon>
-                <VisibilityIcon fontSize="small" />
+                <VisibilityIcon fontSize="small"/>
             </ListItemIcon>
             <ListItemText>View Details</ListItemText>
         </MenuItem>
@@ -39,15 +39,15 @@ const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
                 onAction(actions.EDIT, order);
                 onClose();
             }}
-            disabled={order?.status === 'COMPLETED' || order?.status === 'CANCELLED'}
+            disabled={order?.status !== 'PENDING'}
         >
             <ListItemIcon>
-                <EditIcon fontSize="small" />
+                <EditIcon fontSize="small"/>
             </ListItemIcon>
             <ListItemText>Edit Order</ListItemText>
         </MenuItem>
 
-        <Divider />
+        <Divider/>
 
         {order?.status === 'PENDING' && (
             <MenuItem onClick={() => {
@@ -56,20 +56,20 @@ const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
             }}
             >
                 <ListItemIcon>
-                    <PersonIcon fontSize="small" />
+                    <PersonIcon fontSize="small"/>
                 </ListItemIcon>
                 <ListItemText>Assign Cutting</ListItemText>
             </MenuItem>
         )}
 
-        {order?.status === 'PENDING' && (
+        {order?.status === 'PENDING' && order?.assignedToCutting && (
             <MenuItem onClick={() => {
                 onAction(actions.START_CUTTING, order);
                 onClose();
             }}
             >
                 <ListItemIcon>
-                    <PlayArrowIcon fontSize="small" />
+                    <PlayArrowIcon fontSize="small"/>
                 </ListItemIcon>
                 <ListItemText>Start Cutting</ListItemText>
             </MenuItem>
@@ -82,20 +82,20 @@ const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
             }}
             >
                 <ListItemIcon>
-                    <GroupIcon fontSize="small" />
+                    <GroupIcon fontSize="small"/>
                 </ListItemIcon>
                 <ListItemText>Assign Production</ListItemText>
             </MenuItem>
         )}
 
-        {order?.status === 'CUTTING' && (
+        {order?.status === 'CUTTING' && order?.assignedToProduction && (
             <MenuItem onClick={() => {
                 onAction(actions.MOVE_TO_PRODUCTION, order);
                 onClose();
             }}
             >
                 <ListItemIcon>
-                    <FactoryIcon fontSize="small" />
+                    <FactoryIcon fontSize="small"/>
                 </ListItemIcon>
                 <ListItemText>Move to Production</ListItemText>
             </MenuItem>
@@ -108,47 +108,52 @@ const ActionMenu = ({ anchorEl, order, onClose, onAction, actions }) => (
             }}
             >
                 <ListItemIcon>
-                    <CheckCircleIcon fontSize="small" color="success" />
+                    <CheckCircleIcon fontSize="small" color="success"/>
                 </ListItemIcon>
                 <ListItemText>Mark Completed</ListItemText>
             </MenuItem>
         )}
 
-        <Divider />
-
-        <MenuItem onClick={() => {
-            onAction(actions.REPORT_ISSUE, order);
-            onClose();
-        }}
-        >
-            <ListItemIcon>
-                <ReportProblemIcon fontSize="small" color="warning" />
-            </ListItemIcon>
-            <ListItemText>Report Issue</ListItemText>
-        </MenuItem>
-
         {order?.status !== 'COMPLETED' && order?.status !== 'CANCELLED' && (
-            <MenuItem onClick={() => {
-                onAction(actions.CANCEL, order);
-                onClose();
-            }}
-            >
-                <ListItemIcon>
-                    <CancelIcon fontSize="small" color="error" />
-                </ListItemIcon>
-                <ListItemText>Cancel Order</ListItemText>
-            </MenuItem>
+
+            <>
+                <Divider/>
+
+                <MenuItem onClick={() => {
+                    onAction(actions.REPORT_ISSUE, order);
+                    onClose();
+                }}
+                >
+                    <ListItemIcon>
+                        <ReportProblemIcon fontSize="small" color="warning"/>
+                    </ListItemIcon>
+                    <ListItemText>Report Issue</ListItemText>
+                </MenuItem>
+
+                <MenuItem onClick={() => {
+                    onAction(actions.CANCEL, order);
+                    onClose();
+                }}
+                >
+                    <ListItemIcon>
+                        <CancelIcon fontSize="small" color="error"/>
+                    </ListItemIcon>
+                    <ListItemText>Cancel Order</ListItemText>
+                </MenuItem>
+            </>
         )}
 
+        {/*IDEA: This should be only available in only some of the statuses, e.g: CANCELLED*/}
         <MenuItem
             onClick={() => {
                 onAction(actions.DELETE, order);
                 onClose();
             }}
-            sx={{ color: 'error.main' }}
+            sx={{color: 'error.main'}}
+            disabled={true} //Disabled until further notice
         >
             <ListItemIcon>
-                <DeleteIcon fontSize="small" color="error" />
+                <DeleteIcon fontSize="small" color="error"/>
             </ListItemIcon>
             <ListItemText>Delete Order</ListItemText>
         </MenuItem>

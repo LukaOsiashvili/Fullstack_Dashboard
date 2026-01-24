@@ -24,8 +24,8 @@ import {
     Step,
     StepLabel,
     useTheme,
+    alpha
 } from '@mui/material';
-import {alpha} from '@mui/material/styles';
 import {
     Edit as EditIcon,
     Visibility as VisibilityIcon,
@@ -51,13 +51,15 @@ import {
     formatDate,
     isOverdue,
     formatDateTime,
-    getDaysUntilDue,
+    getTimeUntilDue,
 } from './utilityFunctions';
 import {
     STATUS_CONFIG,
     PRIORITY_CONFIG,
     STATUS_STEPS,
 } from './dummyData';
+import {useResolveIssueMutation} from "../../state/apis/api";
+import toast from "react-hot-toast";
 
 const OrderRow = ({
                       orderData,
@@ -74,11 +76,23 @@ const OrderRow = ({
     const theme = useTheme();
 
     const overdue = isOverdue(orderData);
-    const daysUntilDue = getDaysUntilDue(orderData.dueDate);
+    // const daysUntilDue = getDaysUntilDue(orderData.dueDate);
+    const daysUntilDue = getTimeUntilDue(orderData.dueDate);
     const statusConfig = STATUS_CONFIG[orderData.status];
     const priorityConfig = PRIORITY_CONFIG[orderData.priority];
     const currentStep = STATUS_STEPS.indexOf(orderData.status);
     const hasUnresolvedIssues = orderData.issues.some(i => !i.resolved);
+
+    const [resolveIssue] = useResolveIssueMutation();
+
+    const handleResolveIssue = async (cutOrderId, issueId) => {
+        try{
+            await resolveIssue({cutOrderId: cutOrderId, issueId: issueId}).unwrap();
+            toast.success("Issue Resolved");
+        } catch (error) {
+            toast.error("Unexpected Error Occurred!");
+        }
+    }
 
     return (
         <>
@@ -138,7 +152,7 @@ const OrderRow = ({
                         </Typography>
                         <Stack direction="row" spacing={0.5} alignItems="center">
                             <Typography variant="caption" color="text.disabled">
-                                ID: {orderData._id}
+                                ID: {orderData._id.slice(-6).toUpperCase()}
                             </Typography>
                             {orderData.relatedOrderId && (
                                 <Chip
@@ -194,19 +208,27 @@ const OrderRow = ({
                     />
                 </TableCell>
 
+                {/*ADD DATE*/}
+                <TableCell>
+                    <Stack spacing={0.5}>
+                        <Typography variant="body2">
+                            {formatDateTime(orderData.addedDate)}
+                        </Typography>
+                    </Stack>
+                </TableCell>
                 {/*DUE DATE*/}
                 <TableCell>
                     <Stack spacing={0.5}>
                         <Typography variant="body2">
-                            {formatDate(orderData.dueDate)}
+                            {formatDateTime(orderData.dueDate)}
                         </Typography>
                         {orderData.dueDate && orderData.status !== 'COMPLETED' && orderData.status !== 'CANCELLED' && (
                             <Typography
                                 variant="caption"
-                                color={overdue ? 'error.main' : daysUntilDue <= 3 ? 'warning.main' : 'text.secondary'}
-                                fontWeight={overdue || daysUntilDue <= 3 ? 600 : 400}
+                                color={overdue ? 'error.main' : daysUntilDue.days <= 3 ? 'warning.main' : 'success.main'}
+                                fontWeight={overdue || daysUntilDue.days <= 3 ? 600 : 500}
                             >
-                                {overdue ? `${Math.abs(daysUntilDue)} days overdue` : `${daysUntilDue} days left`}
+                                {overdue ? `${Math.abs(daysUntilDue.days)} days and ${Math.abs(daysUntilDue.hours)} hours overdue` : `${daysUntilDue.days} days and ${daysUntilDue.hours} hours left`}
                             </Typography>
                         )}
                     </Stack>
@@ -329,7 +351,7 @@ const OrderRow = ({
                                 {/* Assignments Summary */}
                                 <Grid size={12}>
                                     <Paper variant="outlined"
-                                           sx={{p: 2, bgcolor: alpha(theme.palette.info.main, 0.02)}}>
+                                           sx={{p: 2, backgroundColor: alpha(theme.palette.info.main, 0.02)}}>
                                         <Typography variant="subtitle1" gutterBottom
                                                     color={theme.palette.secondary[200]}>
                                             Assignments
@@ -338,7 +360,7 @@ const OrderRow = ({
                                         <Grid container spacing={2}>
                                             <Grid size={{xs: 12, md: 6}}>
                                                 <Stack direction="row" spacing={2} alignItems="center">
-                                                    <Avatar sx={{bgcolor: 'info.main'}}>
+                                                    <Avatar sx={{backgroundColor: 'info.main'}}>
                                                         <CutIcon/>
                                                     </Avatar>
                                                     <Box>
@@ -367,7 +389,7 @@ const OrderRow = ({
                                             </Grid>
                                             <Grid size={{xs: 12, md: 6}}>
                                                 <Stack direction="row" spacing={2} alignItems="center">
-                                                    <Avatar sx={{bgcolor: 'primary.main'}}>
+                                                    <Avatar sx={{backgroundColor: 'primary.main'}}>
                                                         <Group/>
                                                     </Avatar>
                                                     <Box>
@@ -528,7 +550,7 @@ const OrderRow = ({
                                                 <Typography variant="body2" color="text.secondary">Due
                                                     Date:</Typography>
                                                 <Typography variant="body2" color={overdue ? 'error.main' : 'inherit'}>
-                                                    {formatDate(orderData.dueDate)}
+                                                    {formatDateTime(orderData.dueDate)}
                                                 </Typography>
                                             </Stack>
                                             <Divider/>
@@ -615,7 +637,10 @@ const OrderRow = ({
                                                         Instructions
                                                     </Typography>
                                                     <Paper variant="outlined"
-                                                           sx={{p: 2, bgcolor: alpha(theme.palette.info.main, 0.05)}}>
+                                                           sx={{
+                                                               p: 2,
+                                                               backgroundColor: alpha(theme.palette.info.main, 0.05)
+                                                           }}>
                                                         <Typography
                                                             variant="body2">{orderData.instructions}</Typography>
                                                     </Paper>
@@ -629,7 +654,7 @@ const OrderRow = ({
                                                     </Typography>
                                                     <Paper variant="outlined" sx={{
                                                         p: 2,
-                                                        bgcolor: alpha(theme.palette.warning.main, 0.05)
+                                                        backgroundColor: alpha(theme.palette.warning.main, 0.05)
                                                     }}>
                                                         <Typography variant="body2">{orderData.notes}</Typography>
                                                     </Paper>
@@ -653,7 +678,7 @@ const OrderRow = ({
                                                     severity={issue.resolved ? 'success' : 'warning'}
                                                     action={
                                                         !issue.resolved && (
-                                                            <Button color="inherit" size="small">
+                                                            <Button color="inherit" size="small" onClick={() => {handleResolveIssue(orderData._id, issue._id)}}>
                                                                 Resolve
                                                             </Button>
                                                         )
@@ -676,31 +701,31 @@ const OrderRow = ({
                                 <Grid size={12}>
                                     <Divider sx={{my: 1}}/>
                                     <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
-                                        <Button
-                                            size="small"
-                                            variant="outlined"
-                                            startIcon={<EditIcon sx={{color: theme.palette.secondary.light}}/>}
-                                            onClick={() => onOpenEditDialog(orderData)}
-                                            sx={{borderColor: theme.palette.primary[300]}}
-                                            disabled={orderData.status === 'COMPLETED' || orderData.status === 'CANCELLED'}
-                                        >
-                                            <Typography
-                                                variant="subtitle1"
-                                                color={theme.palette.secondary.light}
-                                                textTransform="none"
-                                            >
-                                                Edit Order
-                                            </Typography>
-                                        </Button>
-                                        {(orderData.status === 'PENDING'
-                                            // || orderData.status === 'CUTTING'
-                                        )
-                                            && (
+                                        {(orderData.status === 'PENDING' && (
                                             <>
                                                 <Button
                                                     size="small"
                                                     variant="outlined"
-                                                    startIcon={<PersonIcon sx={{color: theme.palette.secondary.light}}/>}
+                                                    startIcon={<EditIcon sx={{color: theme.palette.secondary.light}}/>}
+                                                    onClick={() => onOpenEditDialog(orderData)}
+                                                    sx={{borderColor: theme.palette.primary[300]}}
+                                                    disabled={orderData.status === 'COMPLETED' || orderData.status === 'CANCELLED'}
+                                                >
+                                                    <Typography
+                                                        variant="subtitle1"
+                                                        color={theme.palette.secondary.light}
+                                                        textTransform="none"
+                                                    >
+                                                        <Typography textTransform="none">
+                                                            Edit Order
+                                                        </Typography>
+                                                    </Typography>
+                                                </Button>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<PersonIcon
+                                                        sx={{color: theme.palette.secondary.light}}/>}
                                                     onClick={() => onOpenAssignCuttingDialog(orderData)}
                                                     sx={{borderColor: theme.palette.primary[300]}}
                                                 >
@@ -709,9 +734,17 @@ const OrderRow = ({
                                                         color={theme.palette.secondary.light}
                                                         textTransform="none"
                                                     >
-                                                        Assign Cutting
+                                                        <Typography textTransform="none">
+                                                            Assign Cutting
+                                                        </Typography>
                                                     </Typography>
                                                 </Button>
+                                            </>
+                                        ))}
+                                        {(orderData.status === 'PENDING' && orderData.assignedToCutting
+                                                // || orderData.status === 'CUTTING'
+                                            )
+                                            && (
                                                 <Button
                                                     size="small"
                                                     variant="contained"
@@ -722,32 +755,39 @@ const OrderRow = ({
                                                         Start Cutting
                                                     </Typography>
                                                 </Button>
-                                            </>
-                                        )}
+
+                                            )}
+
                                         {orderData.status === 'CUTTING' && (
-                                            <>
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    startIcon={<Group sx={{color: theme.palette.secondary.light}}/>}
-                                                    sx={{borderColor: theme.palette.primary[300]}}
-                                                    onClick={() => onOpenAssignProductionDialog(orderData)}
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<Group sx={{color: theme.palette.secondary.light}}/>}
+                                                sx={{borderColor: theme.palette.primary[300]}}
+                                                onClick={() => onOpenAssignProductionDialog(orderData)}
+                                            >
+                                                <Typography
+                                                    variant="subtitle1"
+                                                    color={theme.palette.secondary.light}
+                                                    textTransform="none"
                                                 >
-                                                    <Typography
-                                                        variant="subtitle1"
-                                                        color={theme.palette.secondary.light}
-                                                        textTransform="none"
-                                                    >
+                                                    <Typography textTransform="none">
                                                         Assign Production
                                                     </Typography>
-                                                </Button>
+                                                </Typography>
+                                            </Button>
+                                        )}
+                                        {orderData.status === 'CUTTING' && orderData.assignedToProduction && (
+                                            <>
                                                 <Button
                                                     size="small"
                                                     variant="contained"
                                                     startIcon={<FactoryIcon/>}
                                                     onClick={() => onStatusChange(orderData._id, 'IN_PRODUCTION')}
                                                 >
-                                                    Move to Production
+                                                    <Typography textTransform="none">
+                                                        Move to Production
+                                                    </Typography>
                                                 </Button>
                                             </>
                                         )}
@@ -764,17 +804,20 @@ const OrderRow = ({
                                                 </Typography>
                                             </Button>
                                         )}
-                                        <Button
-                                            size="small"
-                                            variant="outlined"
-                                            color="warning"
-                                            startIcon={<ReportProblemIcon/>}
-                                            onClick={() => onOpenIssueDialog(orderData)}
-                                        >
-                                            <Typography textTransform="none">
-                                                Report Issue
-                                            </Typography>
-                                        </Button>
+
+                                        {(orderData.status !== 'COMPLETED' && orderData.status !== 'CANCELLED') && (
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="warning"
+                                                startIcon={<ReportProblemIcon/>}
+                                                onClick={() => onOpenIssueDialog(orderData)}
+                                            >
+                                                <Typography textTransform="none">
+                                                    Report Issue
+                                                </Typography>
+                                            </Button>
+                                        )}
                                     </Stack>
                                 </Grid>
                             </Grid>

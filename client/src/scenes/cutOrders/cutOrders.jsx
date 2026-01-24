@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {
     Box,
     Paper,
@@ -23,9 +23,8 @@ import {
     ButtonGroup,
     useTheme,
     styled,
-    OutlinedInput,
+    OutlinedInput, LinearProgress, alpha
 } from '@mui/material';
-import {alpha} from '@mui/material/styles';
 import {
     Add as AddIcon,
     Search as SearchIcon,
@@ -43,22 +42,28 @@ import {
 import dayjs from 'dayjs';
 
 // My Components
-import FilterDrawer from "../../components/cutOrdersPageComponents/filterDrawer";
-import {isOverdue} from "../../components/cutOrdersPageComponents/utilityFunctions";
-import {
-    dummyUsers,
-    dummyCutOrders,
-    productionGroups,
-} from "../../components/cutOrdersPageComponents/dummyData";
+import Header from "../../components/Header";
 import CutStatsCards from "../../components/cutOrdersPageComponents/cutStatCards";
-import OrderFormDialog from "../../components/cutOrdersPageComponents/dialogs/orderFormDialog";
-import ActionMenu from "../../components/cutOrdersPageComponents/actionMenu";
-import ViewOrderDialog from "../../components/cutOrdersPageComponents/dialogs/viewOrderDialog";
+import FilterDrawer from "../../components/cutOrdersPageComponents/filterDrawer";
 import OrderRow from "../../components/cutOrdersPageComponents/orderRow";
+import ActionMenu from "../../components/cutOrdersPageComponents/actionMenu";
+//Dialogs
+import OrderFormDialog from "../../components/cutOrdersPageComponents/dialogs/orderFormDialog";
+import ViewOrderDialog from "../../components/cutOrdersPageComponents/dialogs/viewOrderDialog";
 import AssignCuttingDialog from "../../components/cutOrdersPageComponents/dialogs/assignCuttingDialog";
 import AssignProductionDialog from "../../components/cutOrdersPageComponents/dialogs/assignProductionDialog";
 import IssueDialog from "../../components/cutOrdersPageComponents/dialogs/issueDialog";
 import DeleteConfirmDialog from "../../components/cutOrdersPageComponents/dialogs/deleteConfirmDialog";
+
+//RTK Query Endpoint Hooks
+import {
+    useAddCutOrderMutation,
+    useAddNewIssueMutation,
+    useGetAllCutOrdersQuery,
+    useUpdateCutOrderMutation
+} from "../../state/apis/api";
+
+import toast from "react-hot-toast";
 
 // Styled Components
 const SearchInput = styled(OutlinedInput)(({theme}) => ({
@@ -72,6 +77,9 @@ const SearchInput = styled(OutlinedInput)(({theme}) => ({
 }));
 
 // Constants
+
+const productionGroups = ['Group A', 'Group B'];
+
 const ORDER_ACTIONS = {
     VIEW: 'VIEW',
     EDIT: 'EDIT',
@@ -89,14 +97,13 @@ const CutOrdersPage = () => {
     const theme = useTheme();
 
     // State
-    const [cutOrders, setCutOrders] = useState(dummyCutOrders);
+    const [cutOrders, setCutOrders] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusTab, setStatusTab] = useState('ALL');
-    const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [orderBy, setOrderBy] = useState('addedDate');
+    const [statusTab, setStatusTab] = useState('');
+    const [orderBy, setOrderBy] = useState('addedDate'); // Kept only for code, probably will be removed
     const [order, setOrder] = useState('desc');
     const [expandedRows, setExpandedRows] = useState({});
+    const [refreshing, setRefreshing] = useState(false);
 
     // Filter state
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -109,6 +116,13 @@ const CutOrdersPage = () => {
         hasIssues: null,
         isOverdue: null,
     });
+
+    const [paginationModel, setPaginationModel] = useState({
+        page: 0,
+        pageSize: 10,
+    })
+
+    const [rowCount, setRowCount] = useState(0);
 
     // Dialogs
     const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -135,24 +149,46 @@ const CutOrdersPage = () => {
     };
     const [orderForm, setOrderForm] = useState(initialOrderForm);
 
+    //RTK Query Endpoint Calls
+    const {
+        data: allCutOrders,
+        isLoading: isCutOrdersLoading,
+        isFetching: isCutOrdersFetching,
+        refetch: refetchCutOrders
+    } = useGetAllCutOrdersQuery({
+        page: paginationModel.page + 1,
+        size: paginationModel.pageSize,
+        filters: {
+            ...filters,
+            dateRange: JSON.stringify(filters.dateRange),
+        }
+    })
+    const [addCutOrder] = useAddCutOrderMutation();
+    const [updateCutOrder] = useUpdateCutOrderMutation();
+    const [addNewIssue] = useAddNewIssueMutation();
+
+    useEffect(() => {
+        if (!allCutOrders) return;
+
+        // console.log("Cut Orders:", allCutOrders);
+        setCutOrders(allCutOrders.data);
+        setRowCount(allCutOrders.stats.total);
+    }, [allCutOrders]);
+
+    useEffect(() => {
+        setPaginationModel(prev => ({...prev, page: 0}));
+        setFilters((prev) => ({
+            ...prev,
+            status: statusTab,
+        }))
+    }, [statusTab]);
+
     // ============================================
     // COMPUTED VALUES
     // ============================================
 
-    const stats = useMemo(() => {
-        const pending = cutOrders.filter(o => o.status === 'PENDING').length;
-        const cutting = cutOrders.filter(o => o.status === 'CUTTING').length;
-        const inProduction = cutOrders.filter(o => o.status === 'IN_PRODUCTION').length;
-        const completed = cutOrders.filter(o => o.status === 'COMPLETED').length;
-        const cancelled = cutOrders.filter(o => o.status === 'CANCELLED').length;
-        const overdue = cutOrders.filter(o => isOverdue(o)).length;
-        const urgent = cutOrders.filter(o => o.priority === 'URGENT' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length;
-        const total = cutOrders.length;
 
-        return {pending, cutting, inProduction, completed, cancelled, overdue, urgent, total};
-    }, [cutOrders]);
-
-    const categories = useMemo(() => {
+    const categories = useMemo(() => { // Later HAS to be interchanged with dedicated endpoint
         return [...new Set(cutOrders.map(o => o.category))];
     }, [cutOrders]);
 
@@ -160,85 +196,163 @@ const CutOrdersPage = () => {
         let count = 0;
         if (filters.priority.length > 0) count++;
         if (filters.category.length > 0) count++;
-        if (filters.dateRange.start || filters.dateRange.end) count++;
-        if (filters.minQuantity || filters.maxQuantity) count++;
+        if (filters.dateRange.start) count++;
+        if (filters.dateRange.end) count++;
+        if (filters.minQuantity) count++;
+        if (filters.maxQuantity) count++;
         if (filters.hasIssues !== null) count++;
         if (filters.isOverdue !== null) count++;
         return count;
     }, [filters]);
 
-    const filteredOrders = useMemo(() => {
-        return cutOrders.filter(order => {
-            // Search filter
-            const matchesSearch =
-                order.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.variantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order._id.toLowerCase().includes(searchTerm.toLowerCase());
 
-            // Status tab filter
-            const matchesStatus = statusTab === 'ALL' || order.status === statusTab;
-
-            // Priority filter
-            const matchesPriority = filters.priority.length === 0 || filters.priority.includes(order.priority);
-
-            // Category filter
-            const matchesCategory = filters.category.length === 0 || filters.category.includes(order.category);
-
-            // Date range filter
-            let matchesDateRange = true;
-            if (filters.dateRange.start && order.dueDate) {
-                matchesDateRange = dayjs(order.dueDate).isAfter(filters.dateRange.start) || dayjs(order.dueDate).isSame(filters.dateRange.start, 'day');
-            }
-            if (matchesDateRange && filters.dateRange.end && order.dueDate) {
-                matchesDateRange = dayjs(order.dueDate).isBefore(filters.dateRange.end) || dayjs(order.dueDate).isSame(filters.dateRange.end, 'day');
-            }
-
-            // Quantity filter
-            let matchesQuantity = true;
-            if (filters.minQuantity) {
-                matchesQuantity = order.quantity >= parseInt(filters.minQuantity);
-            }
-            if (matchesQuantity && filters.maxQuantity) {
-                matchesQuantity = order.quantity <= parseInt(filters.maxQuantity);
-            }
-
-            // Has issues filter
-            let matchesIssues = true;
-            if (filters.hasIssues === true) {
-                matchesIssues = order.issues.some(i => !i.resolved);
-            }
-
-            // Overdue filter
-            let matchesOverdue = true;
-            if (filters.isOverdue === true) {
-                matchesOverdue = isOverdue(order);
-            }
-
-            return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesDateRange && matchesQuantity && matchesIssues && matchesOverdue;
-        }).sort((a, b) => {
-            const aValue = a[orderBy];
-            const bValue = b[orderBy];
-
-            if (orderBy === 'addedDate' || orderBy === 'dueDate') {
-                const aDate = aValue ? dayjs(aValue) : dayjs(0);
-                const bDate = bValue ? dayjs(bValue) : dayjs(0);
-                return order === 'asc' ? aDate.diff(bDate) : bDate.diff(aDate);
-            }
-
-            if (typeof aValue === 'string') {
-                return order === 'asc'
-                    ? aValue.localeCompare(bValue)
-                    : bValue.localeCompare(aValue);
-            }
-
-            return order === 'asc' ? aValue - bValue : bValue - aValue;
+    const clearAllFilters = () => {
+        setFilters({
+            priority: [],
+            category: [],
+            dateRange: {start: null, end: null},
+            minQuantity: '',
+            maxQuantity: '',
+            hasIssues: null,
+            isOverdue: null,
         });
-    }, [cutOrders, searchTerm, statusTab, filters, orderBy, order]);
+    };
 
     // ============================================
     // HANDLERS
     // ============================================
 
+    const handleCreateCutOrder = async (cutOrderData) => {
+        try {
+            await addCutOrder(cutOrderData).unwrap();
+            toast.success("Cut Order Created Successfully!")
+        } catch (error) {
+            toast.error("Cut Order Creation Failed!");
+        }
+    };
+
+    const handleEditCutOrder = async (cutOrderData) => {
+        try {
+            await updateCutOrder({cutOrderId: selectedOrder._id, data: cutOrderData}).unwrap();
+            toast.success("Cut Order Edited Successfully!");
+        } catch (error) {
+            toast.error("Cut Order Edit Failed!");
+        } finally {
+            setEditDialogOpen(false);
+            setSelectedOrder(null);
+            setOrderForm(initialOrderForm);
+        }
+    };
+
+    const handleRefresh = async () => {
+        try {
+            setRefreshing(true);
+            setPaginationModel((prev) => ({...prev, page: 0}))
+            await refetchCutOrders().unwrap();
+            toast.success("Cut Orders Refreshed!");
+        } catch (error) {
+            toast.error("Cut Orders Could Not be Refreshed!");
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
+    const handleAssignCutting = async (user) => {
+        try {
+            const assignedToCutting = {
+                userId: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                assignedDate: new Date(),
+            }
+
+            const cutOrderData = {
+                ...selectedOrder,
+                assignedToCutting: assignedToCutting
+            }
+
+            await updateCutOrder({cutOrderId: selectedOrder._id, data: cutOrderData}).unwrap();
+            toast.success("Laser Operator Assigned Successfully!");
+        } catch (error) {
+            toast.error("Laser Operator Assignment Failed!");
+        } finally {
+            setAssignCuttingDialogOpen(false);
+            setSelectedOrder(null);
+        }
+    };
+
+    const handleAssignProduction = async (group) => {
+        try {
+            const assignedToProduction = {
+                group: group,
+                assignedDate: new Date(),
+            }
+
+            await updateCutOrder({
+                cutOrderId: selectedOrder._id,
+                data: {assignedToProduction: assignedToProduction}
+            }).unwrap();
+            toast.success("Production Group Assigned Successfully!");
+        } catch (error) {
+            toast.error("Production Group Assignment Failed!");
+        } finally {
+            setAssignProductionDialogOpen(false);
+            setSelectedOrder(null);
+        }
+    };
+
+    const handleStatusChange = async (orderId, newStatus) => {
+        try {
+            const order = cutOrders.find(o => o._id === orderId);
+
+            const updates = {status: newStatus};
+
+            if (newStatus === 'CUTTING' && order.cuttingStartedDate === null) {
+                updates.cuttingStartedDate = new Date();
+            } else if (newStatus === 'IN_PRODUCTION') {
+                if (!order.cuttingCompletedDate) updates.cuttingCompletedDate = new Date();
+                if (!order.productionStartedDate) updates.productionStartedDate = new Date();
+            } else if (newStatus === 'COMPLETED') {
+                updates.completedDate = new Date();
+            }
+
+            await updateCutOrder({cutOrderId: orderId, data: updates}).unwrap();
+            toast.success("Cut Order Updated Successfully!");
+        } catch (error) {
+            console.error(error)
+            toast.error("Cut Orders Update Failed!");
+        }
+    };
+
+    const handleReportIssue = async (orderId, description) => {
+        try {
+            const issue = {
+                description: description,
+                reportedBy: {
+                    userId: '68acdee03f62212a72502f36',
+                    name: "Luka Osiashvili"
+                },
+                reportedDate: new Date(),
+            }
+
+            await addNewIssue({cutOrderId: orderId, data: issue}).unwrap();
+            toast.success("New Issue Added!");
+        } catch (error) {
+            toast.error("Issue Could not be Added!");
+        } finally {
+            setSelectedOrder(null);
+        }
+    };
+
+    const handleDeleteOrder = () => {
+        setCutOrders(prev => prev.filter(o => o._id !== selectedOrder?._id));
+        setDeleteConfirmOpen(false);
+        setSelectedOrder(null);
+        handleMenuClose();
+    };
+
+    // P.S. Currently it is not actively used in practice, only stayed as complete recipe for future reference
+    // More likely to be removed
     const handleSort = (property) => {
         const isAsc = orderBy === property && order === 'asc';
         setOrder(isAsc ? 'desc' : 'asc');
@@ -252,34 +366,14 @@ const CutOrdersPage = () => {
         }));
     };
 
+    //==================================================
+    // HANDLE OPEN / CLOSE DIALOGS
+    //==================================================
+
     const handleMenuOpen = (event, orderData) => {
         event.stopPropagation();
         setMenuAnchorEl(event.currentTarget);
         setSelectedOrder(orderData);
-    };
-
-    const handleMenuClose = () => {
-        setMenuAnchorEl(null);
-    };
-
-    const handleStatusChange = (orderId, newStatus) => {
-        setCutOrders(prev => prev.map(order => {
-            if (order._id === orderId) {
-                const updates = {status: newStatus};
-
-                if (newStatus === 'CUTTING' && !order.cuttingStartedDate) {
-                    updates.cuttingStartedDate = new Date();
-                } else if (newStatus === 'IN_PRODUCTION') {
-                    if (!order.cuttingCompletedDate) updates.cuttingCompletedDate = new Date();
-                    if (!order.productionStartedDate) updates.productionStartedDate = new Date();
-                } else if (newStatus === 'COMPLETED') {
-                    updates.completedDate = new Date();
-                }
-
-                return {...order, ...updates};
-            }
-            return order;
-        }));
     };
 
     const openEditDialog = (orderData) => {
@@ -317,70 +411,11 @@ const CutOrdersPage = () => {
         setIssueDialogOpen(true);
     };
 
-    const handleAssignCutting = (userId) => {
-        const user = dummyUsers.find(u => u._id === userId);
-        setCutOrders(prev => prev.map(order => {
-            if (order._id === selectedOrder?._id) {
-                return {
-                    ...order,
-                    assignedToCutting: {
-                        userId: user._id,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        assignedDate: new Date(),
-                    },
-                };
-            }
-            return order;
-        }));
-        setAssignCuttingDialogOpen(false);
-        setSelectedOrder(null);
+    const handleMenuClose = () => {
+        setMenuAnchorEl(null);
     };
 
-    const handleAssignProduction = (group) => {
-        setCutOrders(prev => prev.map(order => {
-            if (order._id === selectedOrder?._id) {
-                return {
-                    ...order,
-                    assignedToProduction: {
-                        group,
-                        assignedDate: new Date(),
-                    },
-                };
-            }
-            return order;
-        }));
-        setAssignProductionDialogOpen(false);
-        setSelectedOrder(null);
-    };
-
-    const handleReportIssue = (orderId, description) => {
-        setCutOrders(prev => prev.map(order => {
-            if (order._id === orderId) {
-                return {
-                    ...order,
-                    issues: [
-                        ...order.issues,
-                        {
-                            description,
-                            reportedBy: {userId: 'user1', name: 'John Smith'},
-                            reportedDate: new Date(),
-                            resolved: false,
-                        },
-                    ],
-                };
-            }
-            return order;
-        }));
-        setSelectedOrder(null);
-    };
-
-    const handleDeleteOrder = () => {
-        setCutOrders(prev => prev.filter(o => o._id !== selectedOrder?._id));
-        setDeleteConfirmOpen(false);
-        setSelectedOrder(null);
-        handleMenuClose();
-    };
+    //==================================================
 
     const handleOrderAction = (action, order) => {
         switch (action) {
@@ -429,47 +464,29 @@ const CutOrdersPage = () => {
         }
     };
 
-    const clearAllFilters = () => {
-        setFilters({
-            priority: [],
-            category: [],
-            dateRange: {start: null, end: null},
-            minQuantity: '',
-            maxQuantity: '',
-            hasIssues: null,
-            isOverdue: null,
-        });
-    };
-
     // ============================================
     // MAIN RETURN
     // ============================================
 
     return (
-        <Box sx={{p: 3}}>
+        <Box m="1.5rem 2rem">
             {/* Page Header */}
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Box>
-                    <Typography variant="h4" fontWeight={700}>
-                        Cut Orders Management
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Manage cutting orders, track production progress, and monitor materials
-                    </Typography>
-                </Box>
-                <Stack direction="row" spacing={1}>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon/>}
-                        onClick={() => setAddDialogOpen(true)}
-                    >
-                        New Cut Order
-                    </Button>
-                </Stack>
+                <Header title={"Cut Orders Management"}
+                        subtitle={"Manage cutting orders, track production progress, and monitor materials"}/>
+                <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<AddIcon/>}
+                    onClick={() => setAddDialogOpen(true)}
+                    sx={{borderRadius: 2}}
+                >
+                    New Cut Order
+                </Button>
             </Stack>
 
             {/* Stats Cards */}
-            <CutStatsCards cutOrders={cutOrders}/>
+            <CutStatsCards/>
 
             <Paper sx={{
                 borderRadius: "5px 5px 0 0",
@@ -484,7 +501,7 @@ const CutOrdersPage = () => {
                         value={statusTab}
                         onChange={(_, newValue) => {
                             setStatusTab(newValue);
-                            setPage(0);
+                            setPaginationModel((prev) => ({...prev, page: 0}));
                         }}
                         sx={{
                             '& .MuiTab-root': {
@@ -496,10 +513,11 @@ const CutOrdersPage = () => {
                             },
                         }}
                     >
+                        {/*ALL ORDERS TAB*/}
                         <Tab
-                            value="ALL"
+                            value=""
                             label={
-                                <Badge badgeContent={stats.total} color="primary">
+                                <Badge badgeContent={rowCount} color="primary">
                                     All Orders
                                 </Badge>
                             }
@@ -510,12 +528,13 @@ const CutOrdersPage = () => {
                                 }
                             }}
                         />
+                        {/*PENDING ORDERS TAB*/}
                         <Tab
                             value="PENDING"
                             label={
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     <ScheduleIcon fontSize="small" color="warning"/>
-                                    <Badge badgeContent={stats.pending} color="warning">
+                                    <Badge badgeContent={allCutOrders?.stats.pending} color="warning">
                                         Pending
                                     </Badge>
                                 </Stack>
@@ -527,12 +546,13 @@ const CutOrdersPage = () => {
                                 }
                             }}
                         />
+                        {/*CUTTING ORDERS TAB*/}
                         <Tab
                             value="CUTTING"
                             label={
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     <CutIcon fontSize="small" color="info"/>
-                                    <Badge badgeContent={stats.cutting} color="info">
+                                    <Badge badgeContent={allCutOrders?.stats.cutting} color="info">
                                         Cutting
                                     </Badge>
                                 </Stack>
@@ -544,12 +564,13 @@ const CutOrdersPage = () => {
                                 }
                             }}
                         />
+                        {/*IN PRODUCTION ORDERS TAB*/}
                         <Tab
                             value="IN_PRODUCTION"
                             label={
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     <FactoryIcon fontSize="small" color="primary"/>
-                                    <Badge badgeContent={stats.inProduction} color="primary">
+                                    <Badge badgeContent={allCutOrders?.stats.inProduction} color="primary">
                                         In Production
                                     </Badge>
                                 </Stack>
@@ -561,12 +582,13 @@ const CutOrdersPage = () => {
                                 }
                             }}
                         />
+                        {/*COMPLETED ORDERS TAB*/}
                         <Tab
                             value="COMPLETED"
                             label={
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     <CheckCircleIcon fontSize="small" color="success"/>
-                                    <Badge badgeContent={stats.completed} color="success">
+                                    <Badge badgeContent={allCutOrders?.stats.completed} color="success">
                                         Completed
                                     </Badge>
                                 </Stack>
@@ -578,12 +600,13 @@ const CutOrdersPage = () => {
                                 }
                             }}
                         />
+                        {/*CANCELLED ORDERS TAB*/}
                         <Tab
                             value="CANCELLED"
                             label={
                                 <Stack direction="row" spacing={1} alignItems="center">
                                     <CancelIcon fontSize="small" color="error"/>
-                                    <Badge badgeContent={stats.cancelled} color="error">
+                                    <Badge badgeContent={allCutOrders?.stats.cancelled} color="error">
                                         Cancelled
                                     </Badge>
                                 </Stack>
@@ -608,6 +631,7 @@ const CutOrdersPage = () => {
                     }}
                 >
                     <Stack direction="row" spacing={2} alignItems="center">
+                        {/*SEARCH BAR*/}
                         <SearchInput
                             size="small"
                             placeholder="Search by product, variant, or ID..."
@@ -630,6 +654,7 @@ const CutOrdersPage = () => {
                             sx={{width: 300}}
                         />
 
+                        {/*FILTERS BUTTON*/}
                         <Badge badgeContent={activeFiltersCount} color="primary">
                             <Button
                                 variant="outlined"
@@ -638,21 +663,26 @@ const CutOrdersPage = () => {
                                 sx={{
                                     borderColor: alpha(theme.palette.divider, 0.3),
                                     color: theme.palette.text.primary,
+
                                     '&:hover': {
                                         borderColor: theme.palette.primary.main,
                                         backgroundColor: theme.palette.primary.main,
                                     },
                                 }}
                             >
-                                Filters
+                                <Typography textTransform="none">
+                                    Filters
+                                </Typography>
                             </Button>
                         </Badge>
 
                         <Box sx={{flex: 1}}/>
 
+                        {/*REFRESH BUTTON*/}
                         <ButtonGroup variant="outlined" size="small">
                             <Tooltip title="Refresh">
                                 <Button
+                                    onClick={handleRefresh}
                                     size="medium"
                                     sx={{
                                         borderColor: alpha(theme.palette.divider, 0.3),
@@ -667,9 +697,13 @@ const CutOrdersPage = () => {
                                 </Button>
                             </Tooltip>
 
+                            {/*EXPORT BUTTON*/}
                             <Tooltip title="Export">
                                 <Button
                                     size="medium"
+                                    onClick={() => {
+                                        toast.success("Feature Coming Soon!")
+                                    }}
                                     sx={{
                                         borderColor: alpha(theme.palette.divider, 0.3),
                                         color: theme.palette.text.primary,
@@ -688,7 +722,11 @@ const CutOrdersPage = () => {
                     {/* Active Filters Display */}
                     {activeFiltersCount > 0 && (
                         <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" gap={1}>
-                            <Typography variant="h5" sx={{alignSelf: 'center'}}>
+                            <Typography variant="h6" sx={{
+                                alignSelf: 'center',
+                                color: theme.palette.secondary.light,
+                                textTransform: 'none'
+                            }}>
                                 Active filters:
                             </Typography>
 
@@ -720,10 +758,24 @@ const CutOrdersPage = () => {
                                 />
                             ))}
 
-                            {(filters.dateRange.start || filters.dateRange.end) && (
+                            {(filters.dateRange.start) && (
                                 <Chip
                                     size="small"
-                                    label="Date Range"
+                                    label={`From: ${dayjs(filters.dateRange.start).format("DD MMM YYYY, HH:mm")}`}
+                                    onDelete={() =>
+                                        setFilters((prev) => ({
+                                            ...prev,
+                                            dateRange: {start: null, end: null},
+                                        }))
+                                    }
+                                />
+                            )}
+
+                            {(filters.dateRange.end) && (
+                                <Chip
+                                    size="small"
+                                    label={`Until: ${dayjs(filters.dateRange.end).format("DD MMM YYYY, HH:mm")}`}
+
                                     onDelete={() =>
                                         setFilters((prev) => ({
                                             ...prev,
@@ -775,15 +827,18 @@ const CutOrdersPage = () => {
 
                             <Button
                                 size="small"
-                                color="secondary"
                                 onClick={clearAllFilters}
                             >
-                                Clear All
+                                <Typography color="textSecondary" sx={{textTransform: 'none'}}>
+                                    Clear All
+                                </Typography>
                             </Button>
                         </Stack>
                     )}
                 </Box>
             </Paper>
+
+            {refreshing && <LinearProgress/>}
 
             {/* Orders Table */}
             <Paper elevation={0}
@@ -795,49 +850,6 @@ const CutOrdersPage = () => {
                     }}
                 >
                     <Table>
-                        {/*<TableHead*/}
-                        {/*    sx={{*/}
-                        {/*        backgroundColor: `${theme.palette.background.alt} !important`,*/}
-                        {/*    }}*/}
-                        {/*>*/}
-                        {/*    <TableRow>*/}
-                        {/*        <TableCell sx={{width: 50}}/>*/}
-                        {/*        <TableCell>*/}
-                        {/*            <TableSortLabel*/}
-                        {/*                active={orderBy === 'productName'}*/}
-                        {/*                direction={orderBy === 'productName' ? order : 'asc'}*/}
-                        {/*                onClick={() => handleSort('productName')}*/}
-                        {/*            >*/}
-                        {/*                Product*/}
-                        {/*            </TableSortLabel>*/}
-                        {/*        </TableCell>*/}
-                        {/*        <TableCell>Category</TableCell>*/}
-                        {/*        <TableCell align="center">Qty</TableCell>*/}
-                        {/*        <TableCell>Status</TableCell>*/}
-                        {/*        <TableCell>*/}
-                        {/*            <TableSortLabel*/}
-                        {/*                active={orderBy === 'priority'}*/}
-                        {/*                direction={orderBy === 'priority' ? order : 'asc'}*/}
-                        {/*                onClick={() => handleSort('priority')}*/}
-                        {/*            >*/}
-                        {/*                Priority*/}
-                        {/*            </TableSortLabel>*/}
-                        {/*        </TableCell>*/}
-                        {/*        <TableCell>*/}
-                        {/*            <TableSortLabel*/}
-                        {/*                active={orderBy === 'dueDate'}*/}
-                        {/*                direction={orderBy === 'dueDate' ? order : 'asc'}*/}
-                        {/*                onClick={() => handleSort('dueDate')}*/}
-                        {/*            >*/}
-                        {/*                Due Date*/}
-                        {/*            </TableSortLabel>*/}
-                        {/*        </TableCell>*/}
-                        {/*        <TableCell>Cutting By</TableCell>*/}
-                        {/*        <TableCell>Production</TableCell>*/}
-                        {/*        <TableCell align="right">Est. Cost</TableCell>*/}
-                        {/*        <TableCell align="center">Actions</TableCell>*/}
-                        {/*    </TableRow>*/}
-                        {/*</TableHead>*/}
                         <TableHead
                             sx={{
                                 backgroundColor: `${theme.palette.background.alt} !important`,
@@ -853,16 +865,17 @@ const CutOrdersPage = () => {
                                 />
 
                                 {[
-                                    { label: 'Product', key: 'productName', sortable: true },
-                                    { label: 'Category' },
-                                    { label: 'Qty', align: 'center' },
-                                    { label: 'Status' },
-                                    { label: 'Priority', key: 'priority', sortable: true },
-                                    { label: 'Due Date', key: 'dueDate', sortable: true },
-                                    { label: 'Cutting By' },
-                                    { label: 'Production' },
-                                    { label: 'Est. Cost', align: 'right' },
-                                    { label: 'Actions', align: 'center' },
+                                    {label: 'Product', key: 'productName'}, // was sortable
+                                    {label: 'Category'},
+                                    {label: 'Qty', align: 'center'},
+                                    {label: 'Status'},
+                                    {label: 'Priority', key: 'priority'}, // was sortable
+                                    {label: 'Add Date', key: 'addedDate'},
+                                    {label: 'Due Date', key: 'dueDate'}, // was sortable
+                                    {label: 'Cutting By'},
+                                    {label: 'Production'},
+                                    {label: 'Est. Cost', align: 'right'},
+                                    {label: 'Actions', align: 'center'},
                                 ].map((col) => (
                                     <TableCell
                                         key={col.label}
@@ -904,9 +917,13 @@ const CutOrdersPage = () => {
                             //     backgroundColor: theme.palette.primary.light,
                             // }}
                         >
-                            {filteredOrders.length === 0 ? (
+                            {cutOrders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={12} align="center" sx={{py: 8, borderBottom: 'none'}}>
+                                    <TableCell colSpan={12} align="center" sx={{
+                                        py: 8,
+                                        borderBottom: 'none',
+                                        backgroundColor: theme.palette.primary[400]
+                                    }}>
                                         <Stack alignItems="center" spacing={2}>
                                             <InventoryIcon sx={{fontSize: 60, color: 'text.disabled'}}/>
                                             <Typography variant="h6" color="text.secondary">
@@ -930,23 +947,21 @@ const CutOrdersPage = () => {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredOrders
-                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                    .map((orderData) => (
-                                        <OrderRow
-                                            key={orderData._id}
-                                            orderData={orderData}
-                                            isExpanded={expandedRows[orderData._id]}
-                                            onExpandRow={handleExpandRow}
-                                            onViewOrder={handleViewOrder}
-                                            onMenuOpen={handleMenuOpen}
-                                            onStatusChange={handleStatusChange}
-                                            onOpenEditDialog={openEditDialog}
-                                            onOpenAssignCuttingDialog={handleOpenAssignCuttingDialog}
-                                            onOpenAssignProductionDialog={handleOpenAssignProductionDialog}
-                                            onOpenIssueDialog={handleOpenIssueDialog}
-                                        />
-                                    ))
+                                cutOrders.map((orderData) => (
+                                    <OrderRow
+                                        key={orderData._id}
+                                        orderData={orderData}
+                                        isExpanded={expandedRows[orderData._id]}
+                                        onExpandRow={handleExpandRow}
+                                        onViewOrder={handleViewOrder}
+                                        onMenuOpen={handleMenuOpen}
+                                        onStatusChange={handleStatusChange}
+                                        onOpenEditDialog={openEditDialog}
+                                        onOpenAssignCuttingDialog={handleOpenAssignCuttingDialog}
+                                        onOpenAssignProductionDialog={handleOpenAssignProductionDialog}
+                                        onOpenIssueDialog={handleOpenIssueDialog}
+                                    />
+                                ))
                             )}
                         </TableBody>
                     </Table>
@@ -954,15 +969,17 @@ const CutOrdersPage = () => {
 
                 <TablePagination
                     component="div"
-                    count={filteredOrders.length}
-                    page={page}
-                    onPageChange={(e, newPage) => setPage(newPage)}
-                    rowsPerPage={rowsPerPage}
+
+                    count={rowCount}
+                    page={paginationModel.page}
+                    onPageChange={(_, newPage) => setPaginationModel((prev) => ({...prev, page: newPage}))}
+                    rowsPerPage={paginationModel.pageSize}
                     onRowsPerPageChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value, 10));
-                        setPage(0);
+                        setPaginationModel({page: 0, pageSize: e.target.value})
                     }}
-                    rowsPerPageOptions={[5, 10, 25, 50]}
+
+                    rowsPerPageOptions={[5, 10, 15]}
+
                     sx={{
                         backgroundColor: theme.palette.background.alt,
                         color: theme.palette.secondary[100],
@@ -1013,11 +1030,7 @@ const CutOrdersPage = () => {
                 isEdit={false}
                 orderForm={orderForm}
                 setOrderForm={setOrderForm}
-                onSubmit={(newOrder) => {
-                    setCutOrders(prev => [newOrder, ...prev]);
-                    setAddDialogOpen(false);
-                    setOrderForm(initialOrderForm);
-                }}
+                onSubmit={handleCreateCutOrder}
                 selectedOrder={null}
             />
 
@@ -1032,18 +1045,7 @@ const CutOrdersPage = () => {
                 isEdit={true}
                 orderForm={orderForm}
                 setOrderForm={setOrderForm}
-                onSubmit={(updatedOrder) => {
-                    setCutOrders(prev =>
-                        prev.map(order =>
-                            order._id === selectedOrder._id
-                                ? {...order, ...updatedOrder}
-                                : order
-                        )
-                    );
-                    setEditDialogOpen(false);
-                    setSelectedOrder(null);
-                    setOrderForm(initialOrderForm);
-                }}
+                onSubmit={handleEditCutOrder}
                 selectedOrder={selectedOrder}
             />
 
@@ -1063,7 +1065,6 @@ const CutOrdersPage = () => {
                     setSelectedOrder(null);
                 }}
                 selectedOrder={selectedOrder}
-                users={dummyUsers}
                 onAssign={handleAssignCutting}
             />
 

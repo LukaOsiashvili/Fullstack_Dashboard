@@ -1,4 +1,7 @@
 import dayjs from "dayjs";
+import duration from 'dayjs/plugin/duration';
+
+dayjs.extend(duration);
 
 export const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -11,7 +14,7 @@ export const formatDate = (date) => {
 
 export const formatDateTime = (date) => {
     if (!date) return '-';
-    return dayjs(date).format('MMM DD, YYYY HH:mm');
+    return dayjs(date).format('MMM DD, YYYY : HH:mm');
 };
 
 export const isOverdue = (order) => {
@@ -24,6 +27,18 @@ export const isOverdue = (order) => {
 export const getDaysUntilDue = (dueDate) => {
     if (!dueDate) return null;
     return dayjs(dueDate).diff(dayjs(), 'day');
+};
+
+export const getTimeUntilDue = (dueDate) => {
+    if (!dueDate) return null;
+
+    const diffMs = dayjs(dueDate).diff(dayjs());
+    const d = dayjs.duration(diffMs);
+
+    return {
+        days: Math.floor(d.asDays()),
+        hours: d.hours()
+    };
 };
 
 export const getPriorityColor = (priority) => {

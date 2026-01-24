@@ -112,7 +112,7 @@ export const dummyUsers = [
     { _id: 'user5', firstName: 'Mike', lastName: 'Johnson', role: 'Supervisor' },
 ];
 
-export const productionGroups = ['Group A', 'Group B', 'Group C', 'Group D'];
+export const productionGroups = ['Group A', 'Group B'];
 
 export const dummyCutOrders = [
     {

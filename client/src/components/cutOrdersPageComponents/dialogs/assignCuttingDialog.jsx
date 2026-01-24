@@ -17,23 +17,23 @@ import {
     ListItemIcon,
     Paper,
     useTheme,
+    alpha
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import {
     Close as CloseIcon,
     ContentCut as CutIcon,
 } from '@mui/icons-material';
+import {useGetUsersByRolesQuery} from "../../../state/apis/api";
 
 const AssignCuttingDialog = ({
                                  open,
                                  onClose,
                                  selectedOrder,
-                                 users,
                                  onAssign,
                              }) => {
     const theme = useTheme();
 
-    const cuttingSpecialists = users.filter(u => u.role === 'Cutting Specialist');
+    const {data: laserWorkers, isLoading: isLaserWorkersLoading, fetching: isLaserWorkersFetching} = useGetUsersByRolesQuery(["laser"]);
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -55,30 +55,37 @@ const AssignCuttingDialog = ({
                 )}
                 <Typography variant="subtitle2" gutterBottom>Select Cutting Specialist</Typography>
                 <List>
-                    {cuttingSpecialists.map(user => (
-                        <ListItem
-                            key={user._id}
-                            component={Paper}
-                            variant="outlined"
-                            sx={{
-                                mb: 1,
-                                cursor: 'pointer',
-                                backgroundColor: alpha(theme.palette.primary.main, 0.5),
-                                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) }
-                            }}
-                            onClick={() => onAssign(user._id)}
-                        >
-                            <ListItemIcon>
-                                <Avatar sx={{ bgcolor: 'info.main' }}>
-                                    {user.firstName[0]}{user.lastName[0]}
-                                </Avatar>
-                            </ListItemIcon>
-                            <ListItemText
-                                primary={`${user.firstName} ${user.lastName}`}
-                                secondary={user.role}
-                            />
-                        </ListItem>
-                    ))}
+
+                    {!isLaserWorkersLoading && !isLaserWorkersFetching ? (
+                        laserWorkers.map(user => (
+                            <ListItem
+                                key={user._id}
+                                component={Paper}
+                                variant="outlined"
+                                sx={{
+                                    mb: 1,
+                                    cursor: 'pointer',
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.5),
+                                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.05) }
+                                }}
+                                onClick={() => onAssign(user)}
+                            >
+                                <ListItemIcon>
+                                    <Avatar sx={{ backgroundColor: 'info.main' }}>
+                                        {user.firstName[0]}{user.lastName[0]}
+                                    </Avatar>
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={`${user.firstName} ${user.lastName}`}
+                                    secondary={user.role}
+                                />
+                            </ListItem>
+                        ))
+                    ) : (
+                        <Typography>
+                            Loading...
+                        </Typography>
+                    )}
                 </List>
             </DialogContent>
             <DialogActions sx={{ px: 3, py: 2, backgroundColor: theme.palette.primary[600] }}>

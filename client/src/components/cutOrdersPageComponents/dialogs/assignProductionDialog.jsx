@@ -14,8 +14,8 @@ import {
     Stack,
     Paper,
     useTheme,
+    alpha
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
 import {
     Close as CloseIcon,
     Factory as FactoryIcon,
@@ -49,7 +49,7 @@ const AssignProductionDialog = ({
                         </Alert>
                     </Box>
                 )}
-                <Typography mb={1.5} variant="subtitle2" gutterBottom>Select Production Group</Typography>
+                <Typography mb={1.5} variant="subtitle2" gutterBottom color={theme.palette.secondary.light}>Select Production Group</Typography>
                 <Grid container spacing={2}>
                     {productionGroups.map(group => (
                         <Grid size={{ xs: 6 }} key={group}>
@@ -62,13 +62,13 @@ const AssignProductionDialog = ({
                                     transition: 'all 0.2s',
                                     backgroundColor: alpha(theme.palette.primary.main, 0.15),
                                     '&:hover': {
-                                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.05),
                                         borderColor: 'primary.main',
                                     },
                                 }}
                                 onClick={() => onAssign(group)}
                             >
-                                <Avatar sx={{ bgcolor: 'primary.main', mx: 'auto', mb: 1, width: 48, height: 48 }}>
+                                <Avatar sx={{ backgroundColor: 'primary.main', mx: 'auto', mb: 1, width: 48, height: 48 }}>
                                     <GroupIcon />
                                 </Avatar>
                                 <Typography variant="subtitle1" fontWeight={600}>{group}</Typography>

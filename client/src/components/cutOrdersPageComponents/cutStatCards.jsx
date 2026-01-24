@@ -4,31 +4,29 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import FactoryIcon from "@mui/icons-material/Factory";
 import WarningIcon from "@mui/icons-material/Warning";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
-import {isOverdue} from "./utilityFunctions";
+import dayjs from "dayjs";
+import {useGetCutOrderStatsQuery} from "../../state/apis/api";
 
-const CutStatsCards = ({cutOrders}) => {
+const CutStatsCards = () => {
     const theme = useTheme();
 
-    const stats = useMemo(() => {
-        const pending = cutOrders.filter(o => o.status === 'PENDING').length;
-        const cutting = cutOrders.filter(o => o.status === 'CUTTING').length;
-        const inProduction = cutOrders.filter(o => o.status === 'IN_PRODUCTION').length;
-        const completed = cutOrders.filter(o => o.status === 'COMPLETED').length;
-        const cancelled = cutOrders.filter(o => o.status === 'CANCELLED').length;
-        const overdue = cutOrders.filter(o => isOverdue(o)).length;
-        const urgent = cutOrders.filter(o => o.priority === 'URGENT' && o.status !== 'COMPLETED' && o.status !== 'CANCELLED').length;
-        const total = cutOrders.length;
 
-        return { pending, cutting, inProduction, completed, cancelled, overdue, urgent, total };
-    }, [cutOrders]);
+    const payload = useMemo(() => {
+        return {
+            todayStartUTC: dayjs().startOf("day").toISOString(),
+            monthStartUTC: dayjs().startOf("month").toISOString(),
+        };
+    }, []);
 
+    const {data: cutStats, isLoading: isCutStatsLoading, isFetching: isCutStatsFetching} = useGetCutOrderStatsQuery(payload, {pollingInterval: 900_000}) //Refetch after 15 min
 
     return (
         <>
-            <Grid container spacing={3} sx={{mb: 3}}>
-                <Grid size={{xs: 12, sm: 6, md: 3}}>
+            <Grid container spacing={3} sx={{mb: 3, alignItems: "stretch"}}>
+                <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                     <Card elevation={0} sx={{
                         backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -37,7 +35,7 @@ const CutStatsCards = ({cutOrders}) => {
                                         Pending
                                     </Typography>
                                     <Typography variant="h2" fontWeight={700} color="warning.main">
-                                        {stats.pending}
+                                        {!isCutStatsLoading ? cutStats.pendingOrders : "Loading..."}
                                     </Typography>
                                 </Box>
                                 <Avatar sx={{
@@ -53,9 +51,10 @@ const CutStatsCards = ({cutOrders}) => {
                     </Card>
                 </Grid>
 
-                <Grid size={{xs: 12, sm: 6, md: 3}}>
+                <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                     <Card elevation={0} sx={{
                         backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -64,7 +63,7 @@ const CutStatsCards = ({cutOrders}) => {
                                         In Cutting
                                     </Typography>
                                     <Typography variant="h2" fontWeight={700} color="info.main">
-                                        {stats.cutting}
+                                        {!isCutStatsLoading ? cutStats.cuttingOrders : "Loading..."}
                                     </Typography>
                                 </Box>
                                 <Avatar sx={{
@@ -80,9 +79,10 @@ const CutStatsCards = ({cutOrders}) => {
                     </Card>
                 </Grid>
 
-                <Grid size={{xs: 12, sm: 6, md: 3}}>
+                <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                     <Card elevation={0} sx={{
                         backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -91,7 +91,7 @@ const CutStatsCards = ({cutOrders}) => {
                                         In Production
                                     </Typography>
                                     <Typography variant="h2" fontWeight={700} color="primary.main">
-                                        {stats.inProduction}
+                                        {!isCutStatsLoading ? cutStats.inProductionOrders : "Loading..."}
                                     </Typography>
                                 </Box>
                                 <Avatar sx={{
@@ -107,9 +107,10 @@ const CutStatsCards = ({cutOrders}) => {
                     </Card>
                 </Grid>
 
-                <Grid size={{xs: 12, sm: 6, md: 3}}>
+                <Grid size={{xs: 12, sm: 6, md: 3}} display="flex">
                     <Card elevation={0} sx={{
                         backgroundColor: theme.palette.background.alt,
+                        flexGrow: 1
                     }}>
                         <CardContent>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -118,7 +119,7 @@ const CutStatsCards = ({cutOrders}) => {
                                         Overdue
                                     </Typography>
                                     <Typography variant="h2" fontWeight={700} color="error.main">
-                                        {stats.overdue}
+                                        {!isCutStatsLoading ? cutStats.overdueOrders : "Loading..."}
                                     </Typography>
                                 </Box>
                                 <Avatar sx={{

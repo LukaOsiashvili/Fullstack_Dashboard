@@ -27,3 +27,12 @@ body,
 ::-webkit-scrollbar-track:hover {
   background: #21295c;
 }
+
+/* Hide browser native password reveal buttons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+input::-webkit-clear-button {
+  display: none;
+}

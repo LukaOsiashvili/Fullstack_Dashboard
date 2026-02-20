@@ -73,6 +73,12 @@ export const api = createApi({
             },
             invalidatesTags: ["UserAvatar"],
         }),
+        getUserAvatar: build.query({
+            query: (id) => ({
+                url: `/users/getUserAvatar/${id}`,
+                method: "GET"
+            }),
+        }),
         // Product Endpoints
         addProduct: build.mutation({
             query: (productData) => ({
@@ -426,6 +432,7 @@ export const {
     useUpdateUserInfoMutation,
     useGetAvatarQuery,
     useUploadAvatarMutation,
+    useGetUserAvatarQuery,
     //PRODUCTS
     useAddProductMutation,
     useAddVariantMutation,

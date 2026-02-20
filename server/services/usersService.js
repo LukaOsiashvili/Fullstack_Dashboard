@@ -211,6 +211,25 @@ module.exports = {
         }
     },
 
+    getPhotoPath: async (req, res) => {
+        try{
+            const user = await UsersModel.findById(req.params.id);
+            if(!user || !user.avatarPath){
+                return res.status(404).send({message: "User or Avatar Not Found"})
+            }
+
+            const filePath = path.join(__dirname, "../..", user.avatarPath);
+            if(!fs.existsSync(filePath)){
+                return res.status(404).send({message: "Avatar Not Found On Server"})
+            }
+
+            res.status(200).json({path: user.avatarPath});
+        } catch (error) {
+            console.log("Error Getting Photo: ", error);
+            res.status(500).json(error);
+        }
+    },
+
     uploadAvatar: async (req, res) => {
 
         let userId;

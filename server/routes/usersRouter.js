@@ -23,6 +23,7 @@ router.delete("/deleteUser/:id", APISecurity.requireLogin, usersService.deleteUs
 router.get("/getUser", APISecurity.requireLogin, usersService.getUser);
 router.put("/updateUser/", APISecurity.requireLogin, usersService.updateUser);
 router.get("/getAvatar", APISecurity.requireLogin, usersService.getAvatar);
+router.get("/getUserAvatar/:id", APISecurity.requireLogin, usersService.getPhotoPath);
 router.put("/uploadAvatar", APISecurity.requireLogin, upload.single("avatar"), usersService.uploadAvatar);
 
 module.exports = router;

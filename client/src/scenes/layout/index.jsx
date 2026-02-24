@@ -1,32 +1,55 @@
-import React, {useState} from 'react'
-import {Box, useMediaQuery} from "@mui/material";
-import {Outlet} from "react-router-dom"
-import {useSelector} from "react-redux"
-import Navbar from "components/Navbar"
-import Sidebar from "components/Sidebar"
+import React, { useState } from 'react';
+import { Box, useMediaQuery } from '@mui/material';
+import { Outlet } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import Navbar from 'components/Navbar';
+import Sidebar from 'components/Sidebar';
+
+const DRAWER_WIDTH = '275px';
 
 const Layout = () => {
+    const isNonMobile = useMediaQuery('(min-width: 600px)');
+    // Start closed on mobile, open on desktop
 
-    const isNonMobile = useMediaQuery("(min-width: 600px)"); //or 768
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const isLoggedIn = useSelector(state => state.auth.isLoggedIn);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(isNonMobile);
+    const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
 
     return (
-        <Box display={isNonMobile ? "flex" : "block"} width={"100%"} height={"100%"}>
-            {isLoggedIn && (<Sidebar drawerWidth={"250px"} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}/>)}
+        <Box
+            display="flex"
+            width="100%"
+            height="100%"
+        >
+            {isLoggedIn && (
+                <Sidebar
+                    drawerWidth={DRAWER_WIDTH}
+                    isSidebarOpen={isSidebarOpen}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                    isNonMobile={isNonMobile}
+                />
+            )}
 
             <Box
-                flexGrow={1}
-                minWidth={0}
-                overflowY="auto"
-                display="flex"
-                flexDirection="column"
+                sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100vh',
+                    overflowY: 'auto',
+                    transition: 'margin-left 0.3s ease',
+                    ml: isNonMobile && isLoggedIn && isSidebarOpen ? DRAWER_WIDTH : 0,
+                }}
             >
-                <Navbar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} isLogIn={!isLoggedIn} />
-                <Outlet/>
+                <Navbar
+                    isSidebarOpen={isSidebarOpen}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                    isLogIn={!isLoggedIn}
+                />
+                <Outlet />
             </Box>
         </Box>
-        )
+    );
+};
 
-}
-export default Layout
+export default Layout;

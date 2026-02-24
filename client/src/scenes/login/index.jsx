@@ -29,6 +29,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import {Form, Formik} from 'formik';
 import * as yup from 'yup';
 import toast from "react-hot-toast";
+import Logo from "../../components/Logo";
 
 const validationSchema = yup.object().shape({
     username: yup.string()
@@ -118,22 +119,39 @@ const Login = () => {
                 >
                     {/* Header */}
                     <Stack alignItems="center" spacing={1} sx={{mb: 3}}>
+                        {/*<Box*/}
+                        {/*    sx={{*/}
+                        {/*        width: 60,*/}
+                        {/*        height: 60,*/}
+                        {/*        borderRadius: "50%",*/}
+                        {/*        display: "flex",*/}
+                        {/*        alignItems: "center",*/}
+                        {/*        justifyContent: "center",*/}
+                        {/*        background: `radial-gradient(circle at 30% 30%, */}
+                        {/*                      ${theme.palette.secondary[400]}, */}
+                        {/*                      ${theme.palette.secondary[600]})`,*/}
+                        {/*        boxShadow: `0 4px 20px ${alpha(theme.palette.secondary[500], 0.4)}`,*/}
+                        {/*        mb: 1,*/}
+                        {/*    }}*/}
+                        {/*>*/}
+                        {/*    <LockOutlinedIcon sx={{fontSize: 30, color: theme.palette.primary[700]}}/>*/}
+                        {/*</Box>*/}
+
                         <Box
                             sx={{
-                                width: 60,
-                                height: 60,
-                                borderRadius: "50%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                background: `radial-gradient(circle at 30% 30%, 
-                                              ${theme.palette.secondary[400]}, 
-                                              ${theme.palette.secondary[600]})`,
-                                boxShadow: `0 4px 20px ${alpha(theme.palette.secondary[500], 0.4)}`,
-                                mb: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                // p: '1.5rem 1.5rem 2rem 1.5rem',
+                                py: '1.5rem'
                             }}
                         >
-                            <LockOutlinedIcon sx={{fontSize: 30, color: theme.palette.primary[700]}}/>
+                            <Logo
+                                sx={{
+                                    fontSize: '30px',
+                                    color: theme.palette.secondary.main,
+                                }}
+                            />
                         </Box>
 
                         <Typography

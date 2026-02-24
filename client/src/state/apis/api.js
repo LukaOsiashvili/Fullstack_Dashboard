@@ -128,12 +128,22 @@ export const api = createApi({
             }),
             providesTags: ["Products"]
         }),
+        // getProductsByCategory: build.query({
+        //     query: (category) => ({
+        //         url: `/products/getProductsByCategory/${category}`,
+        //         method: "GET"
+        //     }),
+        //     providesTags: (result, error, category) => [{type: "Products", id: category}],
+        // }),
         getProductsByCategory: build.query({
-            query: (category) => ({
+            query: ({ category, status }) => ({
                 url: `/products/getProductsByCategory/${category}`,
-                method: "GET"
+                method: "GET",
+                params: status ? { status } : undefined,
             }),
-            providesTags: (result, error, category) => [{type: "Products", id: category}],
+            providesTags: (result, error, { category, status }) => [
+                { type: "Products", id: `${category}_${status || 'all'}` }
+            ],
         }),
         getProductById: build.query({
             query: (productId) => ({
@@ -185,12 +195,22 @@ export const api = createApi({
                 {type: "Product", id: productId}
             ],
         }),
+        // getCategories: build.query({
+        //     query: () => ({
+        //         url: `/products/getCategories`,
+        //         method: "GET"
+        //     }),
+        //     providesTags: ["Products"],
+        // }),
         getCategories: build.query({
-            query: () => ({
+            query: (status) => ({
                 url: `/products/getCategories`,
-                method: "GET"
+                method: "GET",
+                params: status ? { status } : undefined,
             }),
-            providesTags: ["Products"],
+            providesTags: (result, error, status) => [
+                { type: "Products", id: `CATEGORIES_${status || 'all'}` }
+            ],
         }),
         // Material Endpoints
         getAllMaterials: build.query({

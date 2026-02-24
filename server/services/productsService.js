@@ -14,10 +14,28 @@ module.exports = {
             });
     },
 
+    // getProductsByCategory: async (req, res) => {
+    //     try {
+    //         const item = await ProductsModel.find({category: req.params.category});
+    //         res.status(200).json(item);
+    //     } catch (error) {
+    //         res.status(500).json(error);
+    //     }
+    // },
+
     getProductsByCategory: async (req, res) => {
         try {
-            const item = await ProductsModel.find({category: req.params.category});
-            res.status(200).json(item);
+            const { status } = req.query;
+
+            let filter = { category: req.params.category };
+            if (status === 'active') {
+                filter.discontinued = { $ne: true };
+            } else if (status === 'discontinued') {
+                filter.discontinued = true;
+            }
+
+            const items = await ProductsModel.find(filter);
+            res.status(200).json(items);
         } catch (error) {
             res.status(500).json(error);
         }
@@ -218,9 +236,28 @@ module.exports = {
         }
     },
 
+    // getCategories: async (req, res) => {
+    //     try {
+    //         const categories = await ProductsModel.distinct('category');
+    //         res.status(200).json(categories);
+    //     } catch (error) {
+    //         res.status(500).json(error);
+    //     }
+    // },
+
     getCategories: async (req, res) => {
         try {
-            const categories = await ProductsModel.distinct('category');
+            const { status } = req.query;
+
+            let filter = {};
+            if (status === 'active') {
+                filter.discontinued = { $ne: true };
+            } else if (status === 'discontinued') {
+                filter.discontinued = true;
+            }
+            // if status === 'all' or undefined → no filter, returns everything
+
+            const categories = await ProductsModel.distinct('category', filter);
             res.status(200).json(categories);
         } catch (error) {
             res.status(500).json(error);
